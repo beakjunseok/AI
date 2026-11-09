@@ -98,7 +98,7 @@ function highlightTarget(node) {
 
 function findDropTarget(x, y) {
   const under = document.elementFromPoint(x, y);
-  return under ? (under.closest("[data-slot]") || under.closest("[data-tab]") || under.closest("#lounge")) : null;
+  return under ? (under.closest("[data-slot]") || under.closest("[data-tab]") || under.closest("#lounge") || under.closest("#corridor")) : null;
 }
 
 function findAgentUnder(x, y) {
@@ -129,7 +129,7 @@ function createAgentNode(agentId) {
     onDrop: (event, speed) => {
       highlightTarget(null);
       expressions[agentId] = null;
-      handleDrop(agentId, findDropTarget(event.clientX, event.clientY));
+      handleDrop(agentId, findDropTarget(event.clientX, event.clientY), event.clientX);
       if (speed > 1.5) throwDizzy(agentId); else refreshSprites(agentId);
       playLanding(agentId);
     }
@@ -137,9 +137,17 @@ function createAgentNode(agentId) {
   return node;
 }
 
-function handleDrop(agentId, target) {
+// 복도 좌표 x → 0~1 비율(캐릭터 폭을 빼서 양 끝에서도 몸이 복도 밖으로 안 나가게).
+function corridorFraction(clientX) {
+  const rect = document.getElementById("corridorCrew").getBoundingClientRect();
+  const width = spriteMetrics().width;
+  return clamp((clientX - rect.left - width / 2) / Math.max(1, rect.width - width), 0, 1);
+}
+
+function handleDrop(agentId, target, clientX) {
   if (!target) return;
   if (target.id === "lounge") moveAgent(agentId, "lounge", null);
+  else if (target.id === "corridor") moveToCorridor(agentId, corridorFraction(clientX));
   else if (target.dataset.tab) moveAgent(agentId, target.dataset.tab, null);
   else if (target.dataset.slot != null) moveAgent(agentId, state.activeProjectId, Number(target.dataset.slot));
 }

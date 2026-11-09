@@ -40,6 +40,7 @@ function loadState() {
     parsed.sound = parsed.sound !== false;
     parsed.appTitle = typeof parsed.appTitle === "string" && parsed.appTitle.trim() ? parsed.appTitle : DEFAULT_APP_TITLE;
     parsed.agents.forEach(agent => { if (agent.slot != null && agent.slot >= SLOT_COUNT) { agent.location = "lounge"; agent.slot = null; agent.currentTaskId = null; } });
+    parsed.agents.forEach(agent => { if (!Number.isFinite(agent.corridorX)) agent.corridorX = 0.5; });
     parsed.briefs = Array.isArray(parsed.briefs) ? parsed.briefs : [];
     parsed.chatByProject = parsed.chatByProject && typeof parsed.chatByProject === "object" ? parsed.chatByProject : {};
     parsed.discussionByProject = parsed.discussionByProject && typeof parsed.discussionByProject === "object" ? parsed.discussionByProject : {};
@@ -68,3 +69,7 @@ const agentsInProject = projectId => state.agents.filter(agent => agent.location
 const nextId = prefix => `${prefix}${state.sequence++}`;
 const pickRandom = list => list[Math.floor(Math.random() * list.length)];
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+// 사무실에 있지만 책상(slot)이 없는 팀원 = 복도에서 쉬는 중.
+const isInCorridor = agent => agent.location !== "lounge" && agent.slot == null;
+// 현재 사무실에서 책상에 앉아 있는 팀원.
+const deskWorkers = () => agentsInProject(state.activeProjectId).filter(agent => agent.slot != null);

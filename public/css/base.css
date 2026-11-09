@@ -2,6 +2,8 @@
   --bg:#06080b; --metal1:#1c2026; --metal2:#0f1216; --line:#2b323b; --lineHi:#3c4652;
   --ink:#dfe7ee; --sub:#7d8894; --cyan:#4de8ff; --cyanDim:rgba(77,232,255,.35); --hot:#ff5a36; --ok:#3dffa8; --warn:#ffb648;
   --floor1:#12161b; --floor2:#151a20; --desk:#22272e; --deskTop:#343b45; --panelW:380px;
+  /* 캐릭터 크기: JS(spriteMetrics)도 이 값을 읽어 좌석·복도 좌표를 계산한다 */
+  --agentW:62px; --agentH:69px;
   --mono:"JetBrains Mono",ui-monospace,monospace; --sans:"IBM Plex Sans KR",sans-serif; --tech:"Chakra Petch","IBM Plex Sans KR",sans-serif;
   --cut:polygon(14px 0,100% 0,100% calc(100% - 14px),calc(100% - 14px) 100%,0 100%,0 14px);
   --cutSm:polygon(7px 0,100% 0,100% calc(100% - 7px),calc(100% - 7px) 100%,0 100%,0 7px);

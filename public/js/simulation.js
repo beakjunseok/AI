@@ -84,8 +84,8 @@ function tickOffice() {
   if (!state.ambient) { updateDynamicViews(); return; }
   state.agents.forEach(agent => {
     const preset = getPreset(agent.id);
-    if (agent.location === "lounge") {
-      agent.energy = clamp(agent.energy + 3, 0, 100);
+    if (agent.location === "lounge" || isInCorridor(agent)) {
+      agent.energy = clamp(agent.energy + (agent.location === "lounge" ? 3 : 2), 0, 100);
       if (agent.sleeping && agent.energy >= 60) wakeUp(agent);
       else if (!agent.sleeping && Math.random() < 0.025) say(agent.id, pickRandom(preset.lines.idle));
       return;
@@ -183,6 +183,7 @@ function spawnCat() {
   cat.addEventListener("animationend", () => cat.remove());
   layer.append(cat);
   if (Math.random() < 0.5) setTimeout(() => playSound("meow"), 900);
+  setTimeout(() => maybePetCat(cat), 2500 + Math.random() * 3500);
 }
 
 function scheduleCat() {

@@ -91,6 +91,14 @@ const POSE_STYLES = {
     @keyframes sleepBreath{0%,100%{transform:translateY(1.2px) scale(1.012,.982)}50%{transform:translateY(.4px) scale(1,1.02)}}
     @keyframes doze{0%,100%{transform:translateY(2.5px) rotate(5deg)}42%{transform:translateY(3.6px) rotate(7.5deg)}48%{transform:translateY(.8px) rotate(1.5deg)}58%{transform:translateY(2.5px) rotate(5deg)}}
     @keyframes hairDroop{0%,100%{transform:rotate(0)}44%{transform:rotate(1.5deg)}50%{transform:rotate(-1.5deg)}60%{transform:rotate(.5deg)}}`,
+  // 고양이 쓰다듬기: 오른쪽으로 몸을 숙이고 오른팔로 쓰다듬는다(왼쪽을 볼 땐 스프라이트가 좌우 반전됨).
+  pet: `.upper{animation:petLean 1.2s ease-in-out infinite}.head{animation:petHead 1.2s ease-in-out infinite -.15s}.hair{animation:hairSway 1.2s ease-in-out infinite -.3s}
+    .armR{animation:stroke .6s ease-in-out infinite}.foreR{animation:strokeFore .6s ease-in-out infinite -.1s}
+    @keyframes petLean{0%,100%{transform:translateY(1.5px) rotate(9deg)}50%{transform:translateY(2.2px) rotate(11deg) scale(1,.98)}}
+    @keyframes petHead{0%,100%{transform:rotate(5deg)}50%{transform:rotate(9deg)}}
+    @keyframes stroke{0%,100%{transform:rotate(-16deg)}50%{transform:rotate(-34deg)}}
+    @keyframes strokeFore{0%,100%{transform:rotate(-4deg)}50%{transform:rotate(-18deg)}}
+    @keyframes hairSway{0%,100%{transform:rotate(0)}50%{transform:rotate(2deg)}}`,
   flail: `.armL{animation:flailL .62s ease-in-out infinite}.armR{animation:flailR .62s ease-in-out infinite -.21s}
     .foreL{animation:elbowL .31s ease-in-out infinite}.foreR{animation:elbowR .31s ease-in-out infinite -.1s}
     .legL{animation:kickL .44s ease-in-out infinite}.legR{animation:kickR .44s ease-in-out infinite}
@@ -107,6 +115,12 @@ const POSE_STYLES = {
 };
 // 같은 포즈라도 팀원마다 위상을 어긋나게 해서 다 같이 똑같이 숨 쉬는 '복붙' 느낌을 없앤다.
 const DESYNCED_POSES = new Set(["idle", "type", "sleep"]);
+
+// 캐릭터 표시 크기(px). CSS 변수 --agentW/--agentH 한 곳에서만 정하고 JS는 읽어 쓴다.
+function spriteMetrics() {
+  const rootStyle = getComputedStyle(document.documentElement);
+  return { width: parseFloat(rootStyle.getPropertyValue("--agentW")) || 62, height: parseFloat(rootStyle.getPropertyValue("--agentH")) || 69 };
+}
 const POSE_PIVOTS = ".armL,.armR,.legL,.legR,.foreL,.foreR,.upper,.head,.hair,.shadow{transform-box:view-box}"
   + ".armL{transform-origin:31px 65px}.armR{transform-origin:69px 65px}.foreL{transform-origin:26px 76px}.foreR{transform-origin:74px 76px}"
   + ".legL{transform-origin:42px 86px}.legR{transform-origin:58px 86px}.upper{transform-origin:50px 92px}.head{transform-origin:50px 60px}"

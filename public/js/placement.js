@@ -35,6 +35,7 @@ function moveAgent(agentId, destination, requestedSlot) {
       releaseTask(occupant);
       occupant.location = fromLocation;
       occupant.slot = fromLocation === "lounge" ? null : fromSlot;
+      occupant.corridorX = agent.corridorX;
       say(occupant.id, pickRandom(getPreset(occupant.id).lines.grab));
     }
     if (fromLocation !== destination) {
@@ -48,6 +49,21 @@ function moveAgent(agentId, destination, requestedSlot) {
   say(agentId, pickRandom(destination === "lounge" ? preset.lines.idle : preset.lines.drop));
   const allWorking = state.agents.every(item => item.location !== "lounge");
   if (allWorking) unlockAchievement("all_working");
+}
+
+// 복도에 내려놓기: 그 사무실 소속은 유지하되 책상 없이 서서 쉰다(업무는 내려놓음). fraction = 복도 왼쪽 0 ~ 오른쪽 1.
+function moveToCorridor(agentId, fraction) {
+  const agent = getAgent(agentId);
+  const project = findProject(state.activeProjectId);
+  if (agent.location !== project.id) addLog(agent, { kind: "move", text: `'${project.name}' 사무실 복도로 이동`, project: project.name });
+  releaseTask(agent);
+  agent.location = project.id;
+  agent.slot = null;
+  agent.corridorX = clamp(fraction, 0, 1);
+  delete loungeOffsets[agentId];
+  saveState();
+  renderAll();
+  say(agentId, pickRandom(getPreset(agentId).lines.idle));
 }
 
 function closeProject(projectId) {
