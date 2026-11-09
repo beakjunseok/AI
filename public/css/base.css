@@ -1,0 +1,52 @@
+:root{
+  --bg:#06080b; --metal1:#1c2026; --metal2:#0f1216; --line:#2b323b; --lineHi:#3c4652;
+  --ink:#dfe7ee; --sub:#7d8894; --cyan:#4de8ff; --cyanDim:rgba(77,232,255,.35); --hot:#ff5a36; --ok:#3dffa8; --warn:#ffb648;
+  --floor1:#12161b; --floor2:#151a20; --desk:#22272e; --deskTop:#343b45; --panelW:380px;
+  --mono:"JetBrains Mono",ui-monospace,monospace; --sans:"IBM Plex Sans KR",sans-serif; --tech:"Chakra Petch","IBM Plex Sans KR",sans-serif;
+  --cut:polygon(14px 0,100% 0,100% calc(100% - 14px),calc(100% - 14px) 100%,0 100%,0 14px);
+  --cutSm:polygon(7px 0,100% 0,100% calc(100% - 7px),calc(100% - 7px) 100%,0 100%,0 7px);
+}
+*{box-sizing:border-box}
+html,body{margin:0;color:var(--ink);font-family:var(--sans);-webkit-tap-highlight-color:transparent}
+body{min-height:100vh;background:
+  radial-gradient(ellipse at 50% -10%,rgba(77,232,255,.10),transparent 60%),
+  repeating-linear-gradient(0deg,rgba(255,255,255,.018) 0 1px,transparent 1px 3px),
+  linear-gradient(rgba(77,232,255,.035) 1px,transparent 1px) 0 0/32px 32px,
+  linear-gradient(90deg,rgba(77,232,255,.035) 1px,transparent 1px) 0 0/32px 32px,var(--bg)}
+button{font-family:inherit;color:inherit}
+.chunky{position:relative;clip-path:var(--cut);background:
+  radial-gradient(circle at 9px calc(100% - 22px),#4a525c 1.6px,transparent 2.2px),
+  radial-gradient(circle at calc(100% - 9px) 22px,#4a525c 1.6px,transparent 2.2px),
+  linear-gradient(90deg,transparent,var(--cyanDim),transparent) top/100% 1px no-repeat,
+  linear-gradient(160deg,var(--metal1),var(--metal2));
+  box-shadow:inset 0 0 0 1px var(--line),inset 0 1px 0 rgba(255,255,255,.06)}
+.btn{clip-path:var(--cutSm);border:0;padding:8px 13px;background:linear-gradient(#2a3039,#1a1e24);color:var(--cyan);cursor:pointer;font-size:13px;font-weight:600;font-family:var(--tech);letter-spacing:.03em;box-shadow:inset 0 0 0 1px var(--cyanDim)}
+.btn:hover{box-shadow:inset 0 0 0 1px var(--cyan),inset 0 0 14px rgba(77,232,255,.2)} .btn:active{transform:translateY(1px)}
+.btn:disabled{opacity:.4}
+.btn.soft{color:var(--ink);box-shadow:inset 0 0 0 1px var(--line)}
+.btn.pink{background:linear-gradient(#0f8fa6,#0a5f70);color:#eafcff;box-shadow:inset 0 0 0 1px var(--cyan),0 0 14px rgba(77,232,255,.25)}
+input,select,textarea{font-family:var(--mono);font-size:13px;border:1px solid var(--line);border-radius:2px;padding:7px 10px;background:#0a0c10;color:var(--ink)}
+input:focus,textarea:focus,select:focus{outline:1px solid var(--cyan);border-color:var(--cyan);box-shadow:0 0 10px rgba(77,232,255,.2)}
+
+#app{transition:padding .25s}
+@media (min-width:900px){ body.panelOpen #app{padding-left:var(--panelW)} }
+
+header{display:flex;align-items:center;gap:8px;padding:12px 14px 4px;flex-wrap:wrap}
+header h1{margin:0;font-size:18px;margin-right:auto;font-weight:600;font-family:var(--tech);letter-spacing:.06em;text-shadow:0 0 12px rgba(77,232,255,.35)}
+header h1 .branch{font-size:10px;color:var(--cyan);border:1px solid var(--cyanDim);padding:1px 7px;margin-left:8px;vertical-align:middle;font-family:var(--mono);letter-spacing:0}
+.pill{clip-path:var(--cutSm);border:0;background:#12161b;box-shadow:inset 0 0 0 1px var(--line);padding:5px 10px;font-size:12px;cursor:pointer;font-family:var(--mono)}
+#aiBadge.on{color:var(--cyan);box-shadow:inset 0 0 0 1px var(--cyanDim)}
+
+nav#tabs{display:flex;gap:4px;overflow-x:auto;padding:8px 14px 0;scrollbar-width:none;border-bottom:1px solid var(--line);margin:0 0 14px}
+nav#tabs::-webkit-scrollbar{display:none}
+.tab{flex:none;border:0;background:#0e1115;clip-path:polygon(10px 0,100% 0,100% 100%,0 100%,0 10px);padding:8px 14px;font-size:13px;cursor:pointer;color:var(--sub);font-family:var(--mono);box-shadow:inset 0 0 0 1px var(--line)}
+.tab::before{content:"▸ ";color:#4a525c}
+.tab.active{background:linear-gradient(#1f252d,#151a20);color:var(--ink);box-shadow:inset 0 2px 0 var(--cyan),inset 0 0 0 1px var(--lineHi)}
+.tab.active::before{color:var(--cyan)}
+.tab .count{font-size:11px;opacity:.6;margin-left:6px}
+.dropHover{outline:1px dashed var(--cyan)!important;outline-offset:2px;box-shadow:0 0 16px rgba(77,232,255,.3)!important}
+.newProject{margin-left:6px;padding-bottom:4px}
+.newProject input{width:140px;padding:5px 8px}
+
+main{display:grid;grid-template-columns:1fr;gap:14px;padding:0 12px 28px}
+@media (min-width:1180px){ main{grid-template-columns:250px 1fr;align-items:start} }

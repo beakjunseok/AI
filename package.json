@@ -1,0 +1,1 @@
+{ "name": "ai-office", "private": true, "engines": { "node": ">=20" } }

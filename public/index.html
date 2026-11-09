@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI 에이전트 팀 사무실</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;600&family=JetBrains+Mono:wght@400;700&family=Chakra+Petch:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/office.css">
+<link rel="stylesheet" href="css/board-lounge.css">
+<link rel="stylesheet" href="css/panel.css">
+<link rel="stylesheet" href="css/effects.css">
+<script src="js/data.js" defer></script>
+<script src="js/state.js" defer></script>
+<script src="js/dom.js" defer></script>
+<script src="js/characters.js" defer></script>
+<script src="js/render.js" defer></script>
+<script src="js/motion.js" defer></script>
+<script src="js/gestures.js" defer></script>
+<script src="js/placement.js" defer></script>
+<script src="js/simulation.js" defer></script>
+<script src="js/panel.js" defer></script>
+<script src="js/chat.js" defer></script>
+<script src="js/markdown.js" defer></script>
+<script src="js/discussion.js" defer></script>
+<script src="js/extras.js" defer></script>
+<script src="js/fx.js" defer></script>
+<script src="js/main.js" defer></script>
+</head>
+<body>
+<aside id="panel" aria-label="AI 팀원 패널"></aside>
+<div id="scrim"></div>
+<div id="app">
+  <header>
+    <h1 title="눌러서 제목 바꾸기"><span id="appTitle">AI//OFFICE</span><span class="branch">⎇ main · v3</span></h1>
+    <button class="pill" id="coinPill" title="업무를 끝내면 코인이 쌓여요">🪙 <b id="coinCount">0</b></button>
+    <button class="pill" id="roomPill">💬 기획방</button>
+    <button class="pill" id="briefPill">📄 브리프 <b id="briefCount">0</b></button>
+    <button class="pill" id="ambientPill">🎬 연출 ON</button>
+    <button class="pill" id="roleMapPill">🧠 AI 역할</button>
+    <button class="pill" id="quotaPill">⚡ 크레딧</button>
+    <button class="pill" id="lockPill" hidden>🔒 코드 입력</button>
+    <button class="pill" id="trophyPill">🏅 <b id="trophyCount">0</b></button>
+    <span class="pill" id="aiBadge">○ simulation</span>
+  </header>
+  <nav id="tabs"></nav>
+  <main>
+    <section id="office" class="chunky">
+      <div id="officeHead"></div>
+      <div class="wall">
+        <canvas id="rain"></canvas>
+        <div class="neonSign">SHIP&nbsp;IT<span>⚡</span></div>
+        <div class="ceilingLamp lampA"></div><div class="ceilingLamp lampB"></div>
+        <div class="window" id="window"></div>
+        <div class="clock" id="clock">--:--</div>
+        <div class="board" aria-hidden="true"><i class="note n1">MVP</i><i class="note n2">QA</i><i class="note n3">v2?</i><i class="note n4">!!</i></div>
+        <div class="poster">! it works on my machine</div>
+        <div class="wallPlant" aria-hidden="true">🪴</div>
+        <div class="rack"><i></i><i></i><i></i><i></i><i></i></div>
+      </div>
+      <div id="deskWrap"><div id="deskGrid"></div><div class="corridor" id="corridor"><span class="exitSign">EXIT ⟵</span><span class="corridorPlant">🪴</span><span class="corridorSign">◀ CORRIDOR ▶</span><span class="waterCooler" title="정수기"></span><span class="coffeeSpot" title="커피 머신">☕</span></div><div id="walkLayer"></div><div id="catLayer"></div></div>
+      <div id="taskBoard">
+        <h3>$ git log --issues</h3>
+        <form class="addTask" id="addTaskForm">
+          <input id="taskTitleInput" placeholder="할 일 추가 (예: 타이틀 화면)" maxlength="40">
+          <select id="taskRoleSelect">
+            <option value="any">누구든</option><option value="plan">기획</option><option value="design">디자인</option>
+            <option value="code">코딩</option><option value="qa">검증</option><option value="sound">사운드</option>
+          </select>
+          <button class="btn" type="submit">추가</button>
+        </form>
+        <div id="taskList"></div>
+      </div>
+    </section>
+    <section id="lounge" class="chunky">
+      <h2>RECHARGE BAY <span class="emptyNote">// 휴게실</span></h2>
+      <div class="sofa"><div id="loungeArea"></div></div>
+      <div class="snackBar" id="snackBar"></div>
+      <p class="hint">tap → AI 채팅 · drag → 자리 이동 · 세게 던지면 어지러워함 · 자판기 아이템은 팀원에게 드래그</p>
+    </section>
+  </main>
+</div>
+<div id="zoom"></div>
+<div id="toast"></div>
+<div id="boot"></div>
+
+</body>
+</html>
