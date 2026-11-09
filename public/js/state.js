@@ -18,7 +18,7 @@ function createInitialState() {
   const initial = {
     projects: [{ id: "p1", name: "리듬 게임", tasks: [] }, { id: "p2", name: "포트폴리오 사이트", tasks: [] }],
     agents: AGENT_PRESETS.map(createAgentState),
-    activeProjectId: "p1", sequence: 1, modelPlan: MODEL_PLAN_VERSION, crossReview: true, ambient: true, sound: true, appTitle: DEFAULT_APP_TITLE, briefs: [], chatByProject: {}, discussionByProject: {}, discussion: null, coins: 20, achievements: [], stats: { tasksDone: 0, pets: 0 }, chat: []
+    activeProjectId: "p1", sequence: 100, modelPlan: MODEL_PLAN_VERSION, crossReview: true, ambient: true, sound: true, appTitle: DEFAULT_APP_TITLE, briefs: [], chatByProject: {}, discussionByProject: {}, discussion: null, coins: 20, achievements: [], stats: { tasksDone: 0, pets: 0 }, chat: []
   };
   Object.assign(initial.agents.find(agent => agent.id === "bit"), { location: "p1", slot: 0 });
   return initial;
@@ -34,7 +34,13 @@ function loadState() {
     parsed.achievements = Array.isArray(parsed.achievements) ? parsed.achievements : [];
     parsed.stats = Object.assign({ tasksDone: 0, pets: 0 }, parsed.stats);
     parsed.chat = Array.isArray(parsed.chat) ? parsed.chat.filter(message => !message.pending) : [];
-    parsed.sequence = parsed.sequence || 1000;
+    parsed.sequence = Math.max(Number(parsed.sequence) || 0, 1000);
+    // 예전 버그로 새 프로젝트가 기존 프로젝트와 같은 id(p1 등)를 받은 저장본 복구: 중복 id는 새 id로 바꾼다.
+    const seenProjectIds = new Set();
+    parsed.projects.forEach(project => {
+      if (seenProjectIds.has(project.id)) project.id = `p${parsed.sequence++}`;
+      seenProjectIds.add(project.id);
+    });
     parsed.crossReview = parsed.crossReview !== false;
     parsed.ambient = parsed.ambient !== false;
     parsed.sound = parsed.sound !== false;
@@ -66,7 +72,12 @@ const getPreset = agentId => AGENT_PRESETS.find(preset => preset.id === agentId)
 const getAgent = agentId => state.agents.find(agent => agent.id === agentId);
 const findProject = projectId => state.projects.find(project => project.id === projectId) || null;
 const agentsInProject = projectId => state.agents.filter(agent => agent.location === projectId);
-const nextId = prefix => `${prefix}${state.sequence++}`;
+// 새 id. 프로젝트 id는 기본 프로젝트(p1, p2)와 절대 겹치지 않게 이미 있는 id를 건너뛴다.
+const nextId = prefix => {
+  let id;
+  do { id = `${prefix}${state.sequence++}`; } while (prefix === "p" && state.projects.some(project => project.id === id));
+  return id;
+};
 const pickRandom = list => list[Math.floor(Math.random() * list.length)];
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 // 사무실에 있지만 책상(slot)이 없는 팀원은 복도나 회의 공간(pod)에서 쉰다.

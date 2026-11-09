@@ -475,8 +475,9 @@ function updatePodBoard() {
   const text = document.getElementById("podBoardText");
   if (!label || !text) return;
   const discussion = state.discussion && state.discussion.status !== "done" ? state.discussion : null;
-  const live = Boolean(discussion) || brainstormActive;
-  label.textContent = discussion ? "🧠 토론 중" : brainstormActive ? "💡 브레인스토밍" : "IDEA BOARD";
+  const live = Boolean(discussion && ["running", "writing"].includes(discussion.status)) || brainstormActive;
+  const running = discussion && ["running", "writing"].includes(discussion.status);
+  label.textContent = running ? "🧠 토론 중" : discussion ? "⏸ 토론 멈춤 · 이어가기 가능" : brainstormActive ? "💡 브레인스토밍" : "IDEA BOARD";
   text.textContent = discussion?.topic || state.briefs?.[0]?.topic || "아이디어 환영 ✍️";
   label.parentElement.classList.toggle("live", live);
 }
