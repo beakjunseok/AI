@@ -171,7 +171,7 @@ function spawnCat() {
   const layer = document.getElementById("catLayer");
   if (layer.querySelector(".cat")) return;
   const bubble = el("div", { class: "bubble" });
-  const cat = el("div", { class: "cat" }, bubble, el("span", { text: "🐈" }));
+  const cat = el("div", { class: "cat", dataset: { project: state.activeProjectId } }, bubble, el("span", { text: "🐈" }));
   cat.addEventListener("click", () => {
     bubble.textContent = pickRandom(["냐옹~", "미야아", "골골골…", "냥!"]);
     bubble.classList.add("show");

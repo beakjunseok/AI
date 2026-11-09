@@ -55,7 +55,8 @@ function renderAppTitle() {
 function createDeskSlot(slotIndex, occupant) {
   const slot = el("div", { class: "slot" + (occupant ? "" : " empty"), dataset: { slot: String(slotIndex) } });
   const desk = el("div", { class: "desk" }, el("div", { class: "monitorStand" }), el("div", { class: "monitor" }));
-  if (!occupant) { slot.append(desk); return slot; }
+  // 빈 자리도 같은 높이의 명패를 둬서 주인이 있든 없든 책상 위치가 같게 한다.
+  if (!occupant) { slot.append(desk, el("div", { class: "plate vacant", text: `0x0${slotIndex + 1} ----` })); return slot; }
   const preset = getPreset(occupant.id);
   slot.dataset.agentId = occupant.id;
   const chair = el("div", { class: "chair" });

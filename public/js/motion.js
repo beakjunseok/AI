@@ -109,7 +109,7 @@ function walkAlong(walker, points) {
     }, startAt);
   });
   const animation = walker.animate(frames, { duration, easing: "linear", fill: "forwards" });
-  const stepTimer = setInterval(() => playSound("step"), FOOTSTEP_INTERVAL_MS);
+  const stepTimer = setInterval(() => { if (!walker.hidden) playSound("step"); }, FOOTSTEP_INTERVAL_MS);
   return animation.finished.catch(() => {}).finally(() => { turnTimers.forEach(clearTimeout); clearInterval(stepTimer); });
 }
 
@@ -135,13 +135,24 @@ function corridorRoute(from, to) {
 }
 const pause = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
 
+// 걷는 스프라이트와 고양이는 나타난 사무실을 기억한다. 다른 프로젝트 탭을 보는 동안엔 숨기고(움직임은 계속), 돌아오면 다시 보인다.
+function createWalker(agent, bubble) {
+  const walker = el("div", { class: "walker", dataset: { project: agent.location } }, bubble, spriteImage(agent.id, "", "walk"));
+  walker.hidden = agent.location !== state.activeProjectId;
+  return walker;
+}
+
+function syncWalkerVisibility() {
+  document.querySelectorAll("#walkLayer .walker, #catLayer .cat").forEach(node => { node.hidden = node.dataset.project !== state.activeProjectId; });
+}
+
 async function runErrand(agent, plan) {
   const start = seatPoint(agent.slot);
   if (!start) return;
   errandAgents.add(agent.id);
   document.querySelector(`#app .agent[data-agent="${agent.id}"]`)?.classList.add("away");
   const bubble = el("div", { class: "bubble", text: plan.startLine });
-  const walker = el("div", { class: "walker" }, bubble, spriteImage(agent.id, "", "walk"));
+  const walker = createWalker(agent, bubble);
   document.getElementById("walkLayer").append(walker);
   try {
     await walkAlong(walker, corridorRoute(start, plan.target));
@@ -213,7 +224,7 @@ async function wanderBack(agent) {
   let position = { x: rect.left - wrap.left, y: fromCorridor ? corridorY() : rect.top - wrap.top };
   const preset = getPreset(agent.id);
   const bubble = el("div", { class: "bubble", text: "" });
-  const walker = el("div", { class: "walker" }, bubble, spriteImage(agent.id, "", "walk"));
+  const walker = createWalker(agent, bubble);
   const walkTo = async (target, line) => { bubble.textContent = line; await walkAlong(walker, corridorRoute(position, target)); position = target; };
   errandAgents.add(agent.id);
   node.classList.add("away");
@@ -274,7 +285,7 @@ function setCatPaused(cat, paused) {
 }
 
 function maybePetCat(cat) {
-  if (!cat.isConnected || Math.random() > CAT_PET_CHANCE) return;
+  if (!cat.isConnected || cat.hidden || Math.random() > CAT_PET_CHANCE) return;
   if (!state.ambient || reducedMotion.matches || document.hidden || errandAgents.size || document.querySelector(".ghost")) return;
   const isFreeToMove = agent => !agent.sleeping && !aiBusyAgents.has(agent.id);
   const wrap = document.getElementById("deskWrap").getBoundingClientRect();
@@ -320,7 +331,7 @@ async function petCatFromSpot(agent, cat, catX) {
   const start = { x: rect.left - wrap.left, y: isInCorridor(agent) ? corridorY() : rect.top - wrap.top };
   const target = { x: catX - sprite.width + 16, y: corridorY() };
   const bubble = el("div", { class: "bubble", text: "앗, 고양이다!" });
-  const walker = el("div", { class: "walker" }, bubble, spriteImage(agent.id, "", "walk"));
+  const walker = createWalker(agent, bubble);
   errandAgents.add(agent.id);
   node.classList.add("away");
   setCatPaused(cat, true);
@@ -375,6 +386,7 @@ function renderAll() {
   renderTaskList();
   if (panelAgentId) renderPanel();
   state.agents.forEach(agent => applyBubble(agent.id));
+  syncWalkerVisibility();
 }
 
 function renderHeaderStats() {
