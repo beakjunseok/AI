@@ -161,14 +161,14 @@ function planErrand(agent) {
   if (coworkers.length) {
     const friend = pickRandom(coworkers);
     const target = seatPoint(friend.slot);
-    if (target) options.push({ target: { x: target.x + 34, y: target.y }, startLine: `@${getPreset(friend.id).name}한테 잠깐…`, arriveLine: pickRandom(preset.lines.chat), stayMs: 2600,
+    if (target) options.push({ target: { x: target.x + 34, y: target.y }, startLine: `@${getPreset(friend.id).name} ${lineFor(agent.id, "visit")}`, arriveLine: pickRandom(preset.lines.chat), stayMs: 2600,
       onArrive: () => { setTimeout(() => say(friend.id, pickRandom(getPreset(friend.id).lines.reply), 2400), 900); } });
   }
   if (emptySlot != null && Math.random() < 0.35) {
     const target = seatPoint(emptySlot);
     if (target) options.push({ target, newSlot: emptySlot, startLine: "자리 좀 바꿔볼까…", arriveLine: pickRandom(preset.lines.drop), stayMs: 600 });
   }
-  options.push({ target: coffeePoint(), startLine: "☕ 커피 타러…", arriveLine: pickRandom(preset.lines.snack), stayMs: 1800,
+  options.push({ target: coffeePoint(), startLine: `☕ ${lineFor(agent.id, "coffee")}`, arriveLine: pickRandom(preset.lines.snack), stayMs: 1800,
     onArrive: () => { agent.energy = clamp(agent.energy + 8, 0, 100); } });
   return pickRandom(options);
 }
@@ -199,7 +199,7 @@ function maybePetCat(cat) {
   runErrand(agent, {
     target: { x: catX - sprite.width + 16, y: corridorY() },
     startLine: "앗, 고양이다!",
-    arriveLine: pickRandom(["착하지~ 🐾", "보들보들…", ...preset.lines.cat]),
+    arriveLine: lineFor(agent.id, "catPet", "cat"),
     stayMs: CAT_PET_STAY_MS,
     onArrive: walker => {
       walker.classList.remove("facingLeft");
@@ -288,6 +288,7 @@ function renderOffice() {
   for (let slotIndex = 0; slotIndex < SLOT_COUNT; slotIndex++) {
     grid.append(createDeskSlot(slotIndex, members.find(agent => agent.slot === slotIndex)));
   }
+  grid.append(createMeetingPod(members.filter(isInPod)));
   renderCorridorCrew(members.filter(isInCorridor));
   renderOfficeStats();
 }
@@ -301,6 +302,38 @@ function renderCorridorCrew(crew) {
     applyMotionPose(node, agent.id);
     return node;
   }));
+}
+
+// 회의 공간: 5번 책상 옆 남는 칸. 화이트보드엔 진행 중인 토론 주제(없으면 최근 브리프)를 띄우고,
+// 팀원을 끌어다 놓으면 테이블에 둘러앉는다. 빈 곳을 누르면 기획방이 열린다.
+function createMeetingPod(crew) {
+  const pod = el("div", { class: "pod", dataset: { pod: "1" }, title: "회의 공간 · 누르면 기획방 · 팀원을 끌어다 놓기",
+    onclick: event => { if (!event.target.closest(".agent")) openRoom(); } });
+  const seats = crew.map((agent, index) => {
+    const node = createAgentNode(agent.id);
+    node.classList.add(`podSeat${index}`);
+    return node;
+  });
+  pod.append(
+    el("div", { class: "podSign", text: "MEETING POD" }),
+    el("div", { class: "podBoard" }, el("b", { id: "podBoardLabel" }), el("span", { id: "podBoardText" })),
+    el("div", { class: "beanbag" }), el("div", { class: "arcade" }, el("i")),
+    ...seats,
+    el("div", { class: "podTable" }, el("span", { class: "podLaptop" }), el("span", { class: "podMug", text: "☕" }))
+  );
+  requestAnimationFrame(updatePodBoard);
+  return pod;
+}
+
+function updatePodBoard() {
+  const label = document.getElementById("podBoardLabel");
+  const text = document.getElementById("podBoardText");
+  if (!label || !text) return;
+  const discussion = state.discussion && state.discussion.status !== "done" ? state.discussion : null;
+  const live = Boolean(discussion) || brainstormActive;
+  label.textContent = discussion ? "🧠 토론 중" : brainstormActive ? "💡 브레인스토밍" : "IDEA BOARD";
+  text.textContent = discussion?.topic || state.briefs?.[0]?.topic || "아이디어 환영 ✍️";
+  label.parentElement.classList.toggle("live", live);
 }
 
 function renderOfficeStats() {

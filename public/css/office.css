@@ -135,3 +135,28 @@ header h1{cursor:pointer}
 .cat .bubble{bottom:100%}
 @keyframes catWalk{from{left:-40px}to{left:calc(100% + 40px)}}
 @keyframes catBob{50%{transform:scaleX(-1) translateY(-3px)}}
+
+/* ---------- 회의 공간 (5번 책상 옆 칸) ---------- */
+.pod{position:relative;height:194px;cursor:pointer;overflow:visible;
+  background:radial-gradient(ellipse 70% 38% at 50% 78%,rgba(255,90,200,.10),transparent 70%),radial-gradient(ellipse at 50% 30%,rgba(77,232,255,.06),transparent 60%)}
+.pod::after{content:"";position:absolute;inset:0;clip-path:var(--cutSm);box-shadow:inset 0 0 0 1px rgba(255,90,200,.28);pointer-events:none}
+.podSign{position:absolute;top:8px;left:50%;transform:translateX(-50%);font:600 10px var(--tech);letter-spacing:.3em;color:#ffd0f3;text-shadow:0 0 4px #ff5ac8,0 0 12px rgba(255,90,200,.7);white-space:nowrap;animation:neonFlicker 9s infinite}
+.podBoard{position:absolute;top:26px;left:50%;transform:translateX(-50%);width:76%;height:44px;padding:4px 7px;background:linear-gradient(#0b1418,#081013);box-shadow:inset 0 0 0 1px var(--cyanDim),0 0 10px rgba(77,232,255,.12);clip-path:var(--cutSm);font-family:var(--mono);overflow:hidden}
+.podBoard b{display:block;font-size:8px;color:var(--cyan);letter-spacing:.12em;font-weight:700}
+.podBoard span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:9.5px;line-height:1.3;color:var(--ink);margin-top:2px}
+.podBoard.live{box-shadow:inset 0 0 0 1px var(--cyan),0 0 14px rgba(77,232,255,.45);animation:boardPulse 1.6s ease-in-out infinite}
+@keyframes boardPulse{50%{box-shadow:inset 0 0 0 1px var(--cyan),0 0 22px rgba(77,232,255,.7)}}
+.podTable{position:absolute;left:50%;bottom:30px;transform:translateX(-50%);width:78px;height:24px;z-index:3;border-radius:50%;background:radial-gradient(ellipse at 50% 35%,#4a5361,#2b323b 70%);box-shadow:0 10px 0 -6px #1a1f25,0 0 0 1px #3c4652}
+.podTable::after{content:"";position:absolute;left:50%;top:18px;width:8px;height:24px;transform:translateX(-50%);background:#232930;z-index:-1}
+.podLaptop{position:absolute;left:18px;top:-9px;width:20px;height:12px;background:linear-gradient(#1c2a33,#0c141a);box-shadow:inset 0 0 0 1px #5b6672,0 0 8px rgba(77,232,255,.35);border-radius:2px 2px 0 0}
+.podLaptop::after{content:"";position:absolute;left:-3px;right:-3px;bottom:-3px;height:3px;background:#8b96a2;border-radius:1px}
+.podMug{position:absolute;right:14px;top:-10px;font-size:12px}
+.beanbag{position:absolute;left:6%;bottom:22px;width:44px;height:24px;border-radius:50% 50% 40% 40%;background:radial-gradient(ellipse at 40% 30%,#c0418f,#6e1f53 75%);box-shadow:inset 0 -4px 0 rgba(0,0,0,.3)}
+.arcade{position:absolute;right:5%;bottom:20px;width:22px;height:46px;background:linear-gradient(#2a1d3a,#160f22);clip-path:polygon(0 12%,100% 0,100% 100%,0 100%);box-shadow:inset 0 0 0 1px #5a3f7a}
+.arcade i{position:absolute;left:4px;right:4px;top:10px;height:12px;background:linear-gradient(90deg,#ff5ac8,#4de8ff);opacity:.8;animation:arcadeGlow 1.2s steps(2) infinite}
+@keyframes arcadeGlow{50%{opacity:.4;filter:hue-rotate(60deg)}}
+.pod .agent{position:absolute;z-index:2}
+.pod .podSeat0{left:4%;bottom:34px}
+.pod .podSeat1{right:4%;bottom:34px}
+.pod .podSeat2{left:calc(50% - var(--agentW) / 2);bottom:42px;z-index:1}
+.pod.dropHover,.pod:hover::after{box-shadow:inset 0 0 0 1px #ff5ac8,0 0 12px rgba(255,90,200,.35)}

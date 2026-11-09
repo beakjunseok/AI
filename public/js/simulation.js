@@ -84,10 +84,11 @@ function tickOffice() {
   if (!state.ambient) { updateDynamicViews(); return; }
   state.agents.forEach(agent => {
     const preset = getPreset(agent.id);
-    if (agent.location === "lounge" || isInCorridor(agent)) {
+    if (agent.location === "lounge" || isOffDesk(agent)) {
       agent.energy = clamp(agent.energy + (agent.location === "lounge" ? 3 : 2), 0, 100);
       if (agent.sleeping && agent.energy >= 60) wakeUp(agent);
-      else if (!agent.sleeping && Math.random() < 0.025) say(agent.id, pickRandom(preset.lines.idle));
+      else if (agent.sleeping && Math.random() < 0.04) say(agent.id, lineFor(agent.id, "sleepTalk"));
+      else if (!agent.sleeping && Math.random() < 0.025) say(agent.id, lineFor(agent.id, isInPod(agent) ? "pod" : ambientLineKey()));
       return;
     }
     const project = findProject(agent.location);
@@ -158,6 +159,7 @@ function updateDynamicViews() {
   });
   renderTaskList();
   renderOfficeStats();
+  updatePodBoard();
   document.querySelectorAll(".tab[data-tab] .count").forEach(node => { node.textContent = `${agentsInProject(node.parentElement.dataset.tab).length}명`; });
   if (panelAgentId) updatePanelLive();
 }

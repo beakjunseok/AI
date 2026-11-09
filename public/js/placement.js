@@ -36,6 +36,7 @@ function moveAgent(agentId, destination, requestedSlot) {
       occupant.location = fromLocation;
       occupant.slot = fromLocation === "lounge" ? null : fromSlot;
       occupant.corridorX = agent.corridorX;
+      occupant.spot = agent.spot;
       say(occupant.id, pickRandom(getPreset(occupant.id).lines.grab));
     }
     if (fromLocation !== destination) {
@@ -46,7 +47,7 @@ function moveAgent(agentId, destination, requestedSlot) {
   }
   saveState();
   renderAll();
-  say(agentId, pickRandom(destination === "lounge" ? preset.lines.idle : preset.lines.drop));
+  say(agentId, destination === "lounge" ? lineFor(agentId, "idle") : lineFor(agentId, Math.random() < 0.5 ? "landed" : "drop", "drop"));
   const allWorking = state.agents.every(item => item.location !== "lounge");
   if (allWorking) unlockAchievement("all_working");
 }
@@ -59,11 +60,30 @@ function moveToCorridor(agentId, fraction) {
   releaseTask(agent);
   agent.location = project.id;
   agent.slot = null;
+  agent.spot = "corridor";
   agent.corridorX = clamp(fraction, 0, 1);
   delete loungeOffsets[agentId];
   saveState();
   renderAll();
-  say(agentId, pickRandom(getPreset(agentId).lines.idle));
+  say(agentId, lineFor(agentId, "corridor"));
+}
+
+// 회의 공간(뮤트 옆 빈 칸)에 앉히기. 최대 POD_CAPACITY명.
+const POD_CAPACITY = 3;
+function moveToPod(agentId) {
+  const agent = getAgent(agentId);
+  const project = findProject(state.activeProjectId);
+  if (isInPod(agent) && agent.location === project.id) return;
+  if (agentsInProject(project.id).filter(isInPod).length >= POD_CAPACITY) { showToast(`회의 공간은 ${POD_CAPACITY}명까지예요`); return; }
+  if (agent.location !== project.id) addLog(agent, { kind: "move", text: `'${project.name}' 회의 공간으로 이동`, project: project.name });
+  releaseTask(agent);
+  agent.location = project.id;
+  agent.slot = null;
+  agent.spot = "pod";
+  delete loungeOffsets[agentId];
+  saveState();
+  renderAll();
+  say(agentId, lineFor(agentId, "pod"));
 }
 
 function closeProject(projectId) {

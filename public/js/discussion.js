@@ -129,6 +129,8 @@ async function startBrainstorm(seed) {
     const members = pickDiscussionMembers();
     pushChat({ from: "user", to: "brainstorm", text: seed || "(지금까지 대화로 아이디어 내기)" });
     postSystemNote(`💡 브레인스토밍 시작 · 참가: ${members.map(id => "@" + getPreset(id).name).join(" ")} · 각자 ${BRAINSTORM_IDEAS_PER_MEMBER}개씩`);
+    members.forEach((id, index) => setTimeout(() => say(id, lineFor(id, "brainstorm"), 2400), index * 350));
+    updatePodBoard();
     const ideaMessages = [];
     for (const agentId of members) {
       const previousIdeas = ideaMessages.map(message => message.text).join("\n").slice(0, 1500);
@@ -151,6 +153,7 @@ async function startBrainstorm(seed) {
     });
   } finally {
     brainstormActive = false;
+    updatePodBoard();
     saveState();
     if (panelAgentId) renderPanel();
   }
@@ -175,6 +178,8 @@ async function startDiscussion(topic) {
   pushChat({ from: "user", to: "topic", text: topic });
   playSound("discussion");
   postSystemNote(`🧠 주제 구체화 시작 · 참가: ${members.map(id => "@" + getPreset(id).name).join(" ")} · ${DISCUSSION_DEFAULT_ROUNDS}라운드`);
+  members.forEach((id, index) => setTimeout(() => say(id, lineFor(id, "discussion"), 2400), index * 350));
+  updatePodBoard();
   await runDiscussionRounds(DISCUSSION_DEFAULT_ROUNDS);
 }
 
@@ -261,7 +266,7 @@ async function writeBrief() {
   if (brief.ok) {
     state.briefs.unshift({ id: briefId, topic: discussion.topic, text: brief.text, time: Date.now(), project: findProject(state.activeProjectId)?.name || "" });
     state.briefs = state.briefs.slice(0, BRIEF_KEEP);
-    discussion.members.forEach(id => { setExpression(id, "happy", 1500); say(id, "브리프 완성!", 2500); });
+    discussion.members.forEach(id => { setExpression(id, "happy", 1500); say(id, lineFor(id, "briefDone"), 2800); });
     renderHeaderStats();
     playSound("brief");
     openBrief(briefId);

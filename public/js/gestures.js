@@ -98,7 +98,7 @@ function highlightTarget(node) {
 
 function findDropTarget(x, y) {
   const under = document.elementFromPoint(x, y);
-  return under ? (under.closest("[data-slot]") || under.closest("[data-tab]") || under.closest("#lounge") || under.closest("#corridor")) : null;
+  return under ? (under.closest("[data-slot]") || under.closest("[data-pod]") || under.closest("[data-tab]") || under.closest("#lounge") || under.closest("#corridor")) : null;
 }
 
 function findAgentUnder(x, y) {
@@ -148,6 +148,7 @@ function handleDrop(agentId, target, clientX) {
   if (!target) return;
   if (target.id === "lounge") moveAgent(agentId, "lounge", null);
   else if (target.id === "corridor") moveToCorridor(agentId, corridorFraction(clientX));
+  else if (target.dataset.pod != null) moveToPod(agentId);
   else if (target.dataset.tab) moveAgent(agentId, target.dataset.tab, null);
   else if (target.dataset.slot != null) moveAgent(agentId, state.activeProjectId, Number(target.dataset.slot));
 }

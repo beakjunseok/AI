@@ -9,7 +9,8 @@ public/            정적 페이지 (빌드 도구 없음)
   index.html       마크업 + CSS/JS 연결
   css/             base · office · board-lounge · panel · effects
   js/              전역 스코프를 공유하는 일반 스크립트(defer, 아래 순서대로 로드)
-    data.js        캐릭터 프리셋, 역할, 대사 등 정적 데이터
+    data.js        캐릭터 프리셋, 역할, 기본 대사 등 정적 데이터
+    lines.js       성격별 추가 대사·이벤트 대사(커피·고양이·밤·잠꼬대 등)와 lineFor()
     ai.js          AI 공급자·무료 한도·대타 순서·서버 연결(접속 코드)
     state.js       저장/불러오기(localStorage), 프로젝트·팀원 상태
     dom.js         DOM·효과 헬퍼
