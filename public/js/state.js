@@ -40,7 +40,7 @@ function loadState() {
     parsed.sound = parsed.sound !== false;
     parsed.appTitle = typeof parsed.appTitle === "string" && parsed.appTitle.trim() ? parsed.appTitle : DEFAULT_APP_TITLE;
     parsed.agents.forEach(agent => { if (agent.slot != null && agent.slot >= SLOT_COUNT) { agent.location = "lounge"; agent.slot = null; agent.currentTaskId = null; } });
-    parsed.agents.forEach(agent => { if (!Number.isFinite(agent.corridorX)) agent.corridorX = 0.5; if (agent.spot !== "pod") agent.spot = "corridor"; });
+    parsed.agents.forEach(agent => { if (!Number.isFinite(agent.corridorX)) agent.corridorX = 0.5; if (!["pod", "floor"].includes(agent.spot)) agent.spot = "corridor"; });
     parsed.briefs = Array.isArray(parsed.briefs) ? parsed.briefs : [];
     parsed.chatByProject = parsed.chatByProject && typeof parsed.chatByProject === "object" ? parsed.chatByProject : {};
     parsed.discussionByProject = parsed.discussionByProject && typeof parsed.discussionByProject === "object" ? parsed.discussionByProject : {};
@@ -72,6 +72,7 @@ const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 // 사무실에 있지만 책상(slot)이 없는 팀원은 복도나 회의 공간(pod)에서 쉰다.
 const isOffDesk = agent => agent.location !== "lounge" && agent.slot == null;
 const isInPod = agent => isOffDesk(agent) && agent.spot === "pod";
-const isInCorridor = agent => isOffDesk(agent) && agent.spot !== "pod";
+const isOnFloor = agent => isOffDesk(agent) && agent.spot === "floor";
+const isInCorridor = agent => isOffDesk(agent) && agent.spot !== "pod" && agent.spot !== "floor";
 // 현재 사무실에서 책상에 앉아 있는 팀원.
 const deskWorkers = () => agentsInProject(state.activeProjectId).filter(agent => agent.slot != null);

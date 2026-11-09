@@ -1,5 +1,7 @@
 /* ================= 제스처 (탭 / 드래그 / 던지기) ================= */
 // 포인터 이벤트 하나로 마우스·터치 처리. 8px 이상 움직이면 드래그, 마지막 100ms 이동 속도로 '던지기' 판정.
+// 이동·놓기는 window에서 듣는다: 드래그 중 화면이 다시 그려져 원래 노드가 DOM에서 빠져도
+// 놓기 이벤트를 놓치지 않아 잔상(유령 캐릭터)이 남지 않는다. 같은 포인터 id만 처리.
 function bindGesture(node, { onTap, onDragStart, onDragMove, onDrop, onDragEnd }) {
   node.addEventListener("pointerdown", startEvent => {
     if (startEvent.button !== 0) return;
@@ -20,18 +22,23 @@ function bindGesture(node, { onTap, onDragStart, onDragMove, onDrop, onDragEnd }
     try { node.setPointerCapture(startEvent.pointerId); } catch (error) { /* 미지원 브라우저 */ }
 
     const onMove = moveEvent => {
+      if (moveEvent.pointerId !== startEvent.pointerId) return;
       trail.push({ x: moveEvent.clientX, y: moveEvent.clientY, time: performance.now() });
       if (trail.length > 8) trail.shift();
       lastMoveEvent = moveEvent;
       if (!ghost && Math.hypot(moveEvent.clientX - origin.x, moveEvent.clientY - origin.y) < 8) return;
-      if (!ghost) ghost = onDragStart ? onDragStart(moveEvent) : null;
+      if (!ghost) {
+        document.querySelectorAll(".ghost").forEach(stale => stale.remove());
+        ghost = onDragStart ? onDragStart(moveEvent) : null;
+      }
       if (ghost) onDragMove?.(moveEvent, ghost);
     };
     const onEnd = endEvent => {
+      if (endEvent.pointerId !== startEvent.pointerId) return;
       clearInterval(autoScrollTimer);
-      node.removeEventListener("pointermove", onMove);
-      node.removeEventListener("pointerup", onEnd);
-      node.removeEventListener("pointercancel", onEnd);
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onEnd);
+      window.removeEventListener("pointercancel", onEnd);
       if (!ghost) { if (endEvent.type === "pointerup") onTap?.(endEvent); return; }
       ghost.remove();
       onDragEnd?.();
@@ -42,9 +49,9 @@ function bindGesture(node, { onTap, onDragStart, onDragMove, onDrop, onDragEnd }
       const speed = Math.hypot(endEvent.clientX - first.x, endEvent.clientY - first.y) / elapsed;
       onDrop?.(endEvent, speed);
     };
-    node.addEventListener("pointermove", onMove);
-    node.addEventListener("pointerup", onEnd);
-    node.addEventListener("pointercancel", onEnd);
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onEnd);
+    window.addEventListener("pointercancel", onEnd);
   });
 }
 
@@ -96,9 +103,13 @@ function highlightTarget(node) {
   highlightedNode = node;
 }
 
+// 놓을 곳 찾기. 팀원이 앉은 칸의 윗부분(의자 위 빈 바닥)에 놓으면 그 책상이 아니라 '바닥'으로 친다.
 function findDropTarget(x, y) {
   const under = document.elementFromPoint(x, y);
-  return under ? (under.closest("[data-slot]") || under.closest("[data-pod]") || under.closest("[data-tab]") || under.closest("#lounge") || under.closest("#corridor")) : null;
+  const slot = under?.closest("[data-slot]");
+  const chair = slot?.querySelector(".chair");
+  if (chair && y < chair.getBoundingClientRect().top - 6) return document.getElementById("deskWrap");
+  return under ? (under.closest("[data-slot]") || under.closest("[data-pod]") || under.closest("[data-tab]") || under.closest("#lounge") || under.closest("#corridor") || under.closest("#deskWrap")) : null;
 }
 
 function findAgentUnder(x, y) {
@@ -129,7 +140,7 @@ function createAgentNode(agentId) {
     onDrop: (event, speed) => {
       highlightTarget(null);
       expressions[agentId] = null;
-      handleDrop(agentId, findDropTarget(event.clientX, event.clientY), event.clientX);
+      handleDrop(agentId, findDropTarget(event.clientX, event.clientY), event.clientX, event.clientY);
       if (speed > 1.5) throwDizzy(agentId); else refreshSprites(agentId);
       playLanding(agentId);
     }
@@ -144,11 +155,12 @@ function corridorFraction(clientX) {
   return clamp((clientX - rect.left - width / 2) / Math.max(1, rect.width - width), 0, 1);
 }
 
-function handleDrop(agentId, target, clientX) {
+function handleDrop(agentId, target, clientX, clientY) {
   if (!target) return;
   if (target.id === "lounge") moveAgent(agentId, "lounge", null);
   else if (target.id === "corridor") moveToCorridor(agentId, corridorFraction(clientX));
   else if (target.dataset.pod != null) moveToPod(agentId);
+  else if (target.id === "deskWrap") moveToFloor(agentId, clientX, clientY);
   else if (target.dataset.tab) moveAgent(agentId, target.dataset.tab, null);
   else if (target.dataset.slot != null) moveAgent(agentId, state.activeProjectId, Number(target.dataset.slot));
 }

@@ -132,6 +132,8 @@ header h1{cursor:pointer}
 .walker img{width:var(--agentW);height:var(--agentH);image-rendering:auto;display:block}
 /* 복도에 내려놓은 팀원: 복도 바닥에 서서 쉬거나 서성인다 */
 #corridorCrew{position:absolute;left:12px;right:12px;bottom:14px;height:46px;pointer-events:none;z-index:7}
+#floorCrew{position:absolute;inset:0;pointer-events:none;z-index:7}
+#floorCrew .agent{position:absolute;left:calc(var(--fx, .4) * 100%);top:calc(var(--fy, .4) * 100%);pointer-events:auto}
 #corridorCrew .agent{position:absolute;bottom:4px;left:calc(var(--spot, .5) * (100% - var(--agentW)));pointer-events:auto;transition:transform 1.8s cubic-bezier(.45,.05,.35,1)}
 .walker.facingLeft img{scale:-1 1}
 .walker .bubble{opacity:1;transform:translateX(-50%)}

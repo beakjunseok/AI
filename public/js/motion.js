@@ -4,6 +4,9 @@
 const MOTION_TICK_MS = 1200;
 const WALK_RANGE_PX = 22;
 const WALK_DURATION_MS = 1800;
+const CORRIDOR_WALK_RANGE_PX = 56;
+// 복도에 내려놓은 팀원은 20~40초 서성이다가 원래 책상(비었으면) 또는 빈 책상으로 걸어 돌아간다.
+const corridorStayMs = () => 20000 + Math.random() * 20000;
 const IDLE_ACTIONS = ["act-hop", "act-stretch", "act-wiggle", "act-nod"];
 const loungeOffsets = {};
 const facingLeft = {};
@@ -19,10 +22,10 @@ function playAction(node, actionClass, durationMs) {
   setTimeout(() => node.classList.remove(actionClass), durationMs);
 }
 
-function walkInLounge(node, agentId) {
+function walkInLounge(node, agentId, range = WALK_RANGE_PX) {
   const current = loungeOffsets[agentId] || 0;
-  let target = Math.round((Math.random() * 2 - 1) * WALK_RANGE_PX);
-  if (Math.abs(target - current) < 10) target = current > 0 ? -WALK_RANGE_PX / 2 : WALK_RANGE_PX / 2;
+  let target = Math.round((Math.random() * 2 - 1) * range);
+  if (Math.abs(target - current) < 10) target = current > 0 ? -range / 2 : range / 2;
   facingLeft[agentId] = target < current;
   loungeOffsets[agentId] = target;
   applyMotionPose(node, agentId);
@@ -35,6 +38,7 @@ function walkInLounge(node, agentId) {
 function motionTick() {
   if (!state.ambient || reducedMotion.matches || document.hidden) return;
   if (document.querySelector(".ghost")) return;
+  maybeReturnFromCorridor();
   state.agents.forEach(agent => {
     const canStroll = agent.location === "lounge" || isInCorridor(agent);
     if (!canStroll) delete loungeOffsets[agent.id];
@@ -42,7 +46,7 @@ function motionTick() {
     const node = document.querySelector(`#app .agent[data-agent="${agent.id}"]`);
     if (!node || [...node.classList].some(name => name === "walking" || name.startsWith("act-"))) return;
     const roll = Math.random();
-    if (canStroll && roll < 0.18) walkInLounge(node, agent.id);
+    if (canStroll && roll < (isInCorridor(agent) ? 0.3 : 0.18)) walkInLounge(node, agent.id, isInCorridor(agent) ? CORRIDOR_WALK_RANGE_PX : WALK_RANGE_PX);
     else if (roll < 0.26) playAction(node, pickRandom(IDLE_ACTIONS), 1100);
     else if (roll < 0.30) { facingLeft[agent.id] = !facingLeft[agent.id]; applyMotionPose(node, agent.id); }
   });
@@ -93,7 +97,9 @@ function walkAlong(walker, points) {
   // 통로·복도처럼 책상 옆을 지나가는 구간은 책상 앞으로 그린다.
   const floorY = corridorY();
   const lastIndex = points.length - 2;
-  const touchesSeat = index => (index === 0 && Math.abs(points[0].y - floorY) >= 2) || (index === lastIndex && Math.abs(points[lastIndex + 1].y - floorY) >= 2);
+  const seatRows = [...document.querySelectorAll("#deskGrid .slot[data-slot]")].map(slot => seatPoint(Number(slot.dataset.slot))?.y).filter(Number.isFinite);
+  const isSeatRow = y => seatRows.some(rowY => Math.abs(rowY - y) < 2);
+  const touchesSeat = index => (index === 0 && isSeatRow(points[0].y)) || (index === lastIndex && isSeatRow(points[lastIndex + 1].y));
   walker.classList.toggle("behindDesk", points.length > 1 && touchesSeat(0));
   const turnTimers = points.slice(1).map((point, index) => {
     const startAt = (distances.slice(0, index).reduce((sum, value) => sum + value, 0) / total) * duration;
@@ -119,9 +125,12 @@ function corridorRoute(from, to) {
   const toIsCorridor = Math.abs(to.y - floorY) < 2;
   const fromIsCorridor = Math.abs(from.y - floorY) < 2;
   const points = [from];
-  if (!fromIsCorridor) points.push({ x: aisle, y: from.y }, { x: aisle, y: floorY });
-  if (toIsCorridor) points.push({ x: to.x, y: floorY });
-  else points.push({ x: aisle, y: floorY }, { x: aisle, y: to.y }, to);
+  if (!fromIsCorridor && !toIsCorridor) points.push({ x: aisle, y: from.y }, { x: aisle, y: to.y }, to);
+  else {
+    if (!fromIsCorridor) points.push({ x: aisle, y: from.y }, { x: aisle, y: floorY });
+    if (toIsCorridor) points.push({ x: to.x, y: floorY });
+    else points.push({ x: aisle, y: floorY }, { x: aisle, y: to.y }, to);
+  }
   return points.filter((point, index) => index === 0 || point.x !== points[index - 1].x || point.y !== points[index - 1].y);
 }
 const pause = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
@@ -175,6 +184,84 @@ function planErrand(agent) {
   return pickRandom(options);
 }
 
+/* ---------- 책상 밖(복도·바닥)에 놓인 팀원의 자율 행동 ---------- */
+// 복도: 20~40초 서성이다가, 바닥(책상 사이): 4~9초 두리번거리다가 움직인다.
+// 행동: 커피 마시기 / 동료 자리 들르기 / 바로 복귀 중 하나를 고른 뒤 원래 책상(비었으면) 또는 빈 책상으로 걸어간다.
+// 빈 책상이 없으면 복도로 가서 계속 쉰다. 한 번에 한 명만 움직인다.
+const FLOOR_STAY_MS = () => 4000 + Math.random() * 5000;
+
+function maybeReturnFromCorridor() {
+  if (errandAgents.size) return;
+  const now = Date.now();
+  const waiting = agentsInProject(state.activeProjectId).filter(agent => (isInCorridor(agent) || isOnFloor(agent)) && !agent.sleeping && !aiBusyAgents.has(agent.id));
+  waiting.forEach(agent => { if (!agent.corridorUntil) agent.corridorUntil = now + (isOnFloor(agent) ? FLOOR_STAY_MS() : corridorStayMs()); });
+  const agent = waiting.find(item => item.corridorUntil <= now);
+  if (agent) wanderBack(agent);
+}
+
+function chooseReturnSlot(agent) {
+  const isFree = slot => slot != null && !agentsInProject(agent.location).some(other => other.slot === slot);
+  return isFree(agent.returnSlot) ? agent.returnSlot : firstEmptySlot(agent.location);
+}
+
+async function wanderBack(agent) {
+  const fromCorridor = isInCorridor(agent);
+  const node = document.querySelector(`${fromCorridor ? "#corridorCrew" : "#floorCrew"} .agent[data-agent="${agent.id}"]`);
+  if (!node) return;
+  const wrap = document.getElementById("deskWrap").getBoundingClientRect();
+  const rect = node.getBoundingClientRect();
+  let position = { x: rect.left - wrap.left, y: fromCorridor ? corridorY() : rect.top - wrap.top };
+  const preset = getPreset(agent.id);
+  const bubble = el("div", { class: "bubble", text: "" });
+  const walker = el("div", { class: "walker" }, bubble, spriteImage(agent.id, "", "walk"));
+  const walkTo = async (target, line) => { bubble.textContent = line; await walkAlong(walker, corridorRoute(position, target)); position = target; };
+  errandAgents.add(agent.id);
+  node.classList.add("away");
+  document.getElementById("walkLayer").append(walker);
+  let seatedAt = null;
+  try {
+    const roll = Math.random();
+    const coworkers = deskWorkers().filter(other => other.id !== agent.id && !errandAgents.has(other.id));
+    if (roll < 0.35) {
+      await walkTo(coffeePoint(), `☕ ${lineFor(agent.id, "coffee")}`);
+      bubble.textContent = pickRandom(preset.lines.snack);
+      agent.energy = clamp(agent.energy + 8, 0, 100);
+      await pause(1600);
+    } else if (roll < 0.5 && coworkers.length) {
+      const friend = pickRandom(coworkers);
+      const seat = seatPoint(friend.slot);
+      if (seat) {
+        await walkTo({ x: seat.x + Math.round(spriteMetrics().width * 0.6), y: seat.y }, `@${getPreset(friend.id).name} ${lineFor(agent.id, "visit")}`);
+        bubble.textContent = lineFor(agent.id, "chat");
+        setTimeout(() => say(friend.id, lineFor(friend.id, "reply"), 2400), 800);
+        await pause(2400);
+      }
+    }
+    const slot = chooseReturnSlot(agent);
+    if (slot != null && seatPoint(slot)) {
+      await walkTo(seatPoint(slot), pickRandom(["자리로 복귀!", ...preset.lines.working]));
+      seatedAt = slot;
+    } else if (!fromCorridor) {
+      await walkTo({ x: position.x, y: corridorY() }, lineFor(agent.id, "corridor"));
+    }
+  } finally {
+    walker.remove();
+    errandAgents.delete(agent.id);
+    const stillOffDesk = isOffDesk(agent) && agent.location === state.activeProjectId;
+    if (stillOffDesk && seatedAt != null && chooseReturnSlot(agent) === seatedAt) {
+      Object.assign(agent, { slot: seatedAt, returnSlot: null, corridorUntil: null });
+      addLog(agent, { kind: "move", text: `한 바퀴 돌고 ${seatedAt + 1}번 책상으로 복귀`, project: findProject(agent.location)?.name });
+    } else if (stillOffDesk) {
+      // 자리가 없으면 복도에서 계속 쉰다.
+      const crew = document.getElementById("corridorCrew").getBoundingClientRect();
+      Object.assign(agent, { spot: "corridor", corridorX: clamp((position.x + wrap.left - crew.left) / Math.max(1, crew.width - spriteMetrics().width), 0, 1), corridorUntil: Date.now() + corridorStayMs() });
+    }
+    saveState();
+    renderAll();
+    if (agent.slot === seatedAt && seatedAt != null) { playLanding(agent.id); say(agent.id, lineFor(agent.id, "landed", "drop")); }
+  }
+}
+
 /* ---------- 고양이 쓰다듬기: 고양이 멈춤 → 팀원이 걸어가 쓰다듬기 포즈 → 하트 → 복귀 → 고양이 다시 출발 ---------- */
 const CAT_PET_CHANCE = 0.5;
 const CAT_PET_STAY_MS = 2800;
@@ -189,12 +276,16 @@ function setCatPaused(cat, paused) {
 function maybePetCat(cat) {
   if (!cat.isConnected || Math.random() > CAT_PET_CHANCE) return;
   if (!state.ambient || reducedMotion.matches || document.hidden || errandAgents.size || document.querySelector(".ghost")) return;
-  const candidates = deskWorkers().filter(agent => !agent.sleeping && !aiBusyAgents.has(agent.id));
-  if (!candidates.length) return;
+  const isFreeToMove = agent => !agent.sleeping && !aiBusyAgents.has(agent.id);
   const wrap = document.getElementById("deskWrap").getBoundingClientRect();
   const catX = cat.getBoundingClientRect().left - wrap.left;
   const sprite = spriteMetrics();
   if (catX < sprite.width || catX > wrap.width - 60) return;
+  // 복도·바닥에서 쉬던 팀원이 있으면 그 팀원이 먼저 간다(가까우니까).
+  const nearby = agentsInProject(state.activeProjectId).filter(agent => (isInCorridor(agent) || isOnFloor(agent)) && isFreeToMove(agent));
+  if (nearby.length && Math.random() < 0.7) { petCatFromSpot(pickRandom(nearby), cat, catX); return; }
+  const candidates = deskWorkers().filter(isFreeToMove);
+  if (!candidates.length) return;
   const agent = pickRandom(candidates);
   const preset = getPreset(agent.id);
   setCatPaused(cat, true);
@@ -217,6 +308,45 @@ function maybePetCat(cat) {
       if (cat.isConnected) setCatPaused(cat, false);
     }
   }).finally(() => { if (cat.isConnected) setCatPaused(cat, false); });
+}
+
+// 복도·바닥에 있던 팀원이 고양이에게 걸어가 쓰다듬고, 끝나면 그 자리(복도)에서 계속 쉰다.
+async function petCatFromSpot(agent, cat, catX) {
+  const node = document.querySelector(`#app .agent[data-agent="${agent.id}"]`);
+  if (!node) return;
+  const wrap = document.getElementById("deskWrap").getBoundingClientRect();
+  const rect = node.getBoundingClientRect();
+  const sprite = spriteMetrics();
+  const start = { x: rect.left - wrap.left, y: isInCorridor(agent) ? corridorY() : rect.top - wrap.top };
+  const target = { x: catX - sprite.width + 16, y: corridorY() };
+  const bubble = el("div", { class: "bubble", text: "앗, 고양이다!" });
+  const walker = el("div", { class: "walker" }, bubble, spriteImage(agent.id, "", "walk"));
+  errandAgents.add(agent.id);
+  node.classList.add("away");
+  setCatPaused(cat, true);
+  document.getElementById("walkLayer").append(walker);
+  try {
+    await walkAlong(walker, corridorRoute(start, target));
+    walker.classList.remove("facingLeft");
+    bubble.textContent = lineFor(agent.id, "catPet", "cat");
+    setSpritePose(walker.querySelector("img[data-sprite]"), "pet");
+    setExpression(agent.id, "happy", CAT_PET_STAY_MS);
+    const catRect = cat.getBoundingClientRect();
+    burst(catRect.left + catRect.width / 2, catRect.top, ["💕", "🐾", "✨"], 6);
+    playSound("meow");
+    agent.affection = clamp(agent.affection + 1, 0, 100);
+    await pause(CAT_PET_STAY_MS);
+  } finally {
+    walker.remove();
+    errandAgents.delete(agent.id);
+    if (cat.isConnected) setCatPaused(cat, false);
+    if (isOffDesk(agent) && !isInPod(agent)) {
+      const crew = document.getElementById("corridorCrew").getBoundingClientRect();
+      Object.assign(agent, { spot: "corridor", corridorX: clamp((target.x + wrap.left - crew.left) / Math.max(1, crew.width - sprite.width), 0, 1), corridorUntil: Date.now() + corridorStayMs() });
+      saveState();
+    }
+    renderAll();
+  }
 }
 
 function errandTick() {
@@ -283,7 +413,7 @@ function renderOffice() {
   const members = agentsInProject(project.id);
   document.getElementById("officeHead").replaceChildren(
     el("div", {}, el("h2", { title: "눌러서 이름 바꾸기", onclick: () => openRenamePrompt("project", project.id) }, `${project.name}/`, el("span", { class: "editHint", text: "✏️" })), el("small", { id: "officeStats" })),
-    state.projects.length > 1 ? el("button", { class: "btn soft", text: "archive", onclick: () => closeProject(project.id) }) : null
+    ...(state.projects.length > 1 ? [el("button", { class: "btn soft", text: "archive", onclick: () => closeProject(project.id) })] : [])
   );
   const grid = document.getElementById("deskGrid");
   grid.replaceChildren();
@@ -292,6 +422,7 @@ function renderOffice() {
   }
   grid.append(createMeetingPod(members.filter(isInPod)));
   renderCorridorCrew(members.filter(isInCorridor));
+  renderFloorCrew(members.filter(isOnFloor));
   renderOfficeStats();
 }
 
@@ -336,6 +467,17 @@ function updatePodBoard() {
   label.textContent = discussion ? "🧠 토론 중" : brainstormActive ? "💡 브레인스토밍" : "IDEA BOARD";
   text.textContent = discussion?.topic || state.briefs?.[0]?.topic || "아이디어 환영 ✍️";
   label.parentElement.classList.toggle("live", live);
+}
+
+// 책상 사이 바닥에 내려놓은 팀원: 사무실 영역 안 비율 좌표(floorX/floorY)에 세운다.
+function renderFloorCrew(crew) {
+  document.getElementById("floorCrew").replaceChildren(...crew.map(agent => {
+    const node = createAgentNode(agent.id);
+    node.style.setProperty("--fx", String(agent.floorX ?? 0.4));
+    node.style.setProperty("--fy", String(agent.floorY ?? 0.4));
+    applyMotionPose(node, agent.id);
+    return node;
+  }));
 }
 
 function renderOfficeStats() {

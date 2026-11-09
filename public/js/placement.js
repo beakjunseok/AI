@@ -37,6 +37,7 @@ function moveAgent(agentId, destination, requestedSlot) {
       occupant.slot = fromLocation === "lounge" ? null : fromSlot;
       occupant.corridorX = agent.corridorX;
       occupant.spot = agent.spot;
+      occupant.corridorUntil = Date.now() + corridorStayMs();
       say(occupant.id, pickRandom(getPreset(occupant.id).lines.grab));
     }
     if (fromLocation !== destination) {
@@ -57,6 +58,8 @@ function moveToCorridor(agentId, fraction) {
   const agent = getAgent(agentId);
   const project = findProject(state.activeProjectId);
   if (agent.location !== project.id) addLog(agent, { kind: "move", text: `'${project.name}' 사무실 복도로 이동`, project: project.name });
+  agent.returnSlot = agent.location === project.id && agent.slot != null ? agent.slot : null;
+  agent.corridorUntil = Date.now() + corridorStayMs();
   releaseTask(agent);
   agent.location = project.id;
   agent.slot = null;
@@ -66,6 +69,27 @@ function moveToCorridor(agentId, fraction) {
   saveState();
   renderAll();
   say(agentId, lineFor(agentId, "corridor"));
+}
+
+// 책상 사이 바닥에 내려놓기: 발이 손끝 위치에 오도록 세우고, 잠시 뒤 스스로 커피·동료 방문·복귀 중 하나를 한다.
+function moveToFloor(agentId, clientX, clientY) {
+  const agent = getAgent(agentId);
+  const project = findProject(state.activeProjectId);
+  const wrap = document.getElementById("deskWrap").getBoundingClientRect();
+  const sprite = spriteMetrics();
+  agent.returnSlot = agent.location === project.id && agent.slot != null ? agent.slot : agent.returnSlot ?? null;
+  if (agent.location !== project.id) { addLog(agent, { kind: "move", text: `'${project.name}' 사무실로 이동`, project: project.name }); agent.returnSlot = null; }
+  releaseTask(agent);
+  Object.assign(agent, {
+    location: project.id, slot: null, spot: "floor",
+    floorX: clamp((clientX - wrap.left - sprite.width / 2) / wrap.width, 0, 1 - sprite.width / wrap.width),
+    floorY: clamp((clientY - wrap.top - sprite.height * 0.85) / wrap.height, 0, 1 - sprite.height / wrap.height),
+    corridorUntil: Date.now() + FLOOR_STAY_MS()
+  });
+  delete loungeOffsets[agentId];
+  saveState();
+  renderAll();
+  say(agentId, lineFor(agentId, Math.random() < 0.5 ? "landed" : "idle", "drop"));
 }
 
 // 회의 공간(뮤트 옆 빈 칸)에 앉히기. 최대 POD_CAPACITY명.
