@@ -18,7 +18,7 @@ function createInitialState() {
   const initial = {
     projects: [{ id: "p1", name: "리듬 게임", tasks: [] }, { id: "p2", name: "포트폴리오 사이트", tasks: [] }],
     agents: AGENT_PRESETS.map(createAgentState),
-    activeProjectId: "p1", sequence: 100, modelPlan: MODEL_PLAN_VERSION, crossReview: true, ambient: true, sound: true, appTitle: DEFAULT_APP_TITLE, briefs: [], chatByProject: {}, discussionByProject: {}, discussion: null, coins: 20, achievements: [], stats: { tasksDone: 0, pets: 0 }, chat: []
+    activeProjectId: "p1", sequence: 100, modelPlan: MODEL_PLAN_VERSION, crossReview: true, ambient: true, sound: true, autoSnack: false, appTitle: DEFAULT_APP_TITLE, briefs: [], chatByProject: {}, discussionByProject: {}, discussion: null, coins: 20, achievements: [], stats: { tasksDone: 0, pets: 0 }, chat: []
   };
   Object.assign(initial.agents.find(agent => agent.id === "bit"), { location: "p1", slot: 0 });
   return initial;
@@ -44,6 +44,7 @@ function loadState() {
     parsed.crossReview = parsed.crossReview !== false;
     parsed.ambient = parsed.ambient !== false;
     parsed.sound = parsed.sound !== false;
+    parsed.autoSnack = parsed.autoSnack === true;
     parsed.appTitle = typeof parsed.appTitle === "string" && parsed.appTitle.trim() ? parsed.appTitle : DEFAULT_APP_TITLE;
     parsed.agents.forEach(agent => { if (agent.slot != null && agent.slot >= SLOT_COUNT) { agent.location = "lounge"; agent.slot = null; agent.currentTaskId = null; } });
     parsed.agents.forEach(agent => { if (!Number.isFinite(agent.corridorX)) agent.corridorX = 0.5; if (!["pod", "floor"].includes(agent.spot)) agent.spot = "corridor"; });

@@ -22,6 +22,8 @@
 #loungeArea .agent{flex:0 1 var(--agentW);min-width:0}
 #loungeArea .agent img{width:100%;height:auto;aspect-ratio:100 / 112}
 .loungeTag{font-size:10px;text-align:center;color:var(--sub);font-family:var(--mono)}
+.autoSnackBtn{margin-left:auto;border:0;clip-path:var(--cutSm);background:#12161b;box-shadow:inset 0 0 0 1px var(--line);color:var(--sub);font:12px var(--mono);padding:7px 10px;cursor:pointer}
+.autoSnackBtn.on{color:var(--ok);box-shadow:inset 0 0 0 1px rgba(61,255,168,.5),0 0 10px rgba(61,255,168,.2)}
 .snackBar{display:flex;gap:6px;margin-top:12px;align-items:center;flex-wrap:wrap}
 .snack{clip-path:var(--cutSm);background:#0a0c10;box-shadow:inset 0 0 0 1px var(--line);padding:4px 9px;font-size:18px;cursor:grab;touch-action:none}
 .snack:hover{box-shadow:inset 0 0 0 1px var(--cyan)}

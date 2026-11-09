@@ -100,6 +100,8 @@ function renderLounge() {
     });
     snackBar.append(node);
   });
+  snackBar.append(el("button", { class: "autoSnackBtn" + (state.autoSnack ? " on" : ""), type: "button", title: "잠든 팀원에게 코인으로 간식을 자동으로 줘요",
+    text: state.autoSnack ? "🤖 자동 간식 ON" : "🤖 자동 간식 OFF", onclick: toggleAutoSnack }));
 }
 
 function renderTaskList() {

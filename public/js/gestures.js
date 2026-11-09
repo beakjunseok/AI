@@ -214,6 +214,38 @@ function throwDizzy(agentId) {
   saveState();
 }
 
+// 자동 간식: 잠든 팀원에게 코인으로 간식을 준다. 깨어날 만큼(에너지 45↑) 되는 가장 싼 간식을 고르고,
+// 그런 게 없으면 살 수 있는 가장 좋은 간식. 같은 팀원에게는 20초에 한 번만. 틱당 O(팀원 수 × 간식 수)
+const AUTO_SNACK_WAKE_ENERGY = 45;
+const AUTO_SNACK_COOLDOWN_MS = 20000;
+const autoSnackFedAt = {};
+let autoSnackBrokeNoticeAt = 0;
+
+function autoFeedSleepers() {
+  if (!state.autoSnack) return;
+  const now = Date.now();
+  state.agents.filter(agent => agent.sleeping && now - (autoSnackFedAt[agent.id] || 0) > AUTO_SNACK_COOLDOWN_MS).forEach(agent => {
+    const affordable = SNACKS.filter(snack => snack.price <= state.coins).sort((first, second) => first.price - second.price);
+    if (!affordable.length) {
+      if (now - autoSnackBrokeNoticeAt > 60000) { autoSnackBrokeNoticeAt = now; showToast("🤖 자동 간식: 코인이 부족해요"); }
+      return;
+    }
+    const snack = affordable.find(item => agent.energy + item.energy >= AUTO_SNACK_WAKE_ENERGY) || affordable[affordable.length - 1];
+    autoSnackFedAt[agent.id] = now;
+    feedSnack(agent.id, snack.key);
+    showToast(`🤖 자동 간식: ${getPreset(agent.id).name}에게 ${snack.icon} ${snack.name} (-${snack.price}🪙)`);
+  });
+}
+
+function toggleAutoSnack() {
+  state.autoSnack = !state.autoSnack;
+  saveState();
+  renderLounge();
+  playSound("tap");
+  showToast(state.autoSnack ? "🤖 자동 간식 ON: 잠든 팀원에게 코인으로 간식을 줘요" : "자동 간식 OFF");
+  autoFeedSleepers();
+}
+
 function feedSnack(agentId, snackKey) {
   const snack = SNACKS.find(item => item.key === snackKey);
   const agent = getAgent(agentId);
