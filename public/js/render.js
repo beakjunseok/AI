@@ -87,7 +87,7 @@ function renderLounge() {
     const node = el("div", { class: "snack", title: `${snack.name} (${snack.price}코인)` }, snack.icon, el("small", { text: `${snack.price}🪙` }));
     bindGesture(node, {
       onTap: () => showToast(`${snack.icon} ${snack.name}을(를) 팀원에게 끌어다 주세요!`),
-      onDragStart: () => createGhost(el("div", { class: "ghost snackGhost", text: snack.icon })),
+      onDragStart: () => { playSound("grab"); return createGhost(el("div", { class: "ghost snackGhost", text: snack.icon })); },
       onDragMove: (event, ghost) => { moveGhost(ghost, event); highlightTarget(findAgentUnder(event.clientX, event.clientY)); },
       onDrop: event => {
         highlightTarget(null);

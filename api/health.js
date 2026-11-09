@@ -1,5 +1,5 @@
 // GET /api/health?code=  → 키가 설정된 공급자마다 짧은 실제 호출. 키 값은 노출하지 않는다.
-const { PROVIDERS, configuredProviders, hasAccess, readSetting, resolvedModels } = require("../lib/providers");
+const { PROVIDERS, configuredProviders, hasAccess, readSetting } = require("../lib/providers");
 
 module.exports = async (request, response) => {
   response.setHeader("Cache-Control", "no-store");
@@ -15,5 +15,5 @@ module.exports = async (request, response) => {
       return [name, { ok: false, ms: Date.now() - startedAt, code: error.code || "error", message: error.message }];
     }
   }));
-  return response.status(200).json({ configured: names, geminiModel: readSetting("GEMINI_MODEL"), autoModels: resolvedModels, results: Object.fromEntries(entries) });
+  return response.status(200).json({ configured: names, geminiModel: readSetting("GEMINI_MODEL"), groqModel: readSetting("GROQ_MODEL"), results: Object.fromEntries(entries) });
 };

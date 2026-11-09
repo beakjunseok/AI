@@ -51,6 +51,7 @@ function motionTick() {
 // 한 번에 한 명만 복도를 걷는다. 걷는 동안 자리의 캐릭터는 숨기고, 복도 레이어에 걷는 스프라이트를 띄운다.
 const ERRAND_CHANCE_PER_TICK = 0.05;
 const WALK_SPEED_PX_PER_SECOND = 110;
+const FOOTSTEP_INTERVAL_MS = 400; // 걷기 포즈 한 주기(0.8초)에 두 걸음
 const errandAgents = new Set();
 
 // deskWrap 기준 좌표. 자리에 앉은 캐릭터 또는 빈 슬롯의 좌석 위치를 돌려준다.
@@ -89,7 +90,8 @@ function walkAlong(walker, points) {
     return setTimeout(() => { if (point.x !== points[index].x) walker.classList.toggle("facingLeft", point.x < points[index].x); }, startAt);
   });
   const animation = walker.animate(frames, { duration, easing: "linear", fill: "forwards" });
-  return animation.finished.catch(() => {}).finally(() => turnTimers.forEach(clearTimeout));
+  const stepTimer = setInterval(() => playSound("step"), FOOTSTEP_INTERVAL_MS);
+  return animation.finished.catch(() => {}).finally(() => { turnTimers.forEach(clearTimeout); clearInterval(stepTimer); });
 }
 
 // 책상 위로 가로지르지 않게: 자리 → 중앙 통로 → 복도 → 중앙 통로 → 목적지 순서로 걷는다.

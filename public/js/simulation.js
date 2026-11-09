@@ -31,6 +31,7 @@ function completeTask(agent, project, task) {
   setExpression(agent.id, "happy", 1500);
   say(agent.id, pickRandom(preset.lines.done));
   burstAtAgent(agent.id, ["✅", "+5", "🪙"], 5);
+  if (project.id === state.activeProjectId) playSound("coin");
   if (state.stats.tasksDone >= 10) unlockAchievement("tasks_10");
   if (state.stats.tasksDone % 10 === 0) { burst(window.innerWidth / 2, window.innerHeight / 2, ["🎉", "🚀", "✨", "200 OK"], 18); showToast(`🎉 업무 ${state.stats.tasksDone}개 달성!`); }
   scheduleReview(agent, project, task);
@@ -116,6 +117,7 @@ function tickOffice() {
 function fallAsleep(agent) {
   agent.sleeping = true;
   say(agent.id, "하암… 5분만…", 3000);
+  playSound("yawn");
   unlockAchievement("overwork");
   renderAll();
 }
@@ -124,10 +126,18 @@ function wakeUp(agent) {
   agent.sleeping = false;
   setExpression(agent.id, "happy", 1200);
   say(agent.id, pickRandom(getPreset(agent.id).lines.wake));
+  playSound("wake");
   renderAll();
 }
 
-// 구조는 그대로 두고 바·모니터·표정·말풍선만 갱신 → 드래그 중 깜빡임 없음.
+// 상태(잠·업무·대기)에 맞는 포즈로 바꾼다. 걷는 중인 스프라이트는 걷기가 끝나면 스스로 돌아오므로 건드리지 않는다. O(1)
+function syncAgentPose(agent, isWorking) {
+  const image = document.querySelector(`#app .agent[data-agent="${agent.id}"] img[data-sprite]`);
+  if (!image || image.dataset.pose === "walk") return;
+  setSpritePose(image, agent.sleeping ? "sleep" : isWorking ? "type" : "idle");
+}
+
+// 구조는 그대로 두고 바·모니터·표정·포즈·말풍선만 갱신 → 드래그 중 깜빡임 없음. O(팀원 수)
 function updateDynamicViews() {
   state.agents.forEach(agent => {
     const project = findProject(agent.location);
@@ -140,9 +150,9 @@ function updateDynamicViews() {
     if (slot) {
       const isWorking = !agent.sleeping && (Boolean(task && !task.done) || aiBusyAgents.has(agent.id));
       slot.classList.toggle("working", isWorking);
-      setSpritePose(slot.querySelector(".agent img[data-sprite]"), isWorking ? "type" : "idle");
       slot.classList.toggle("sleeping", agent.sleeping);
     }
+    syncAgentPose(agent, Boolean(slot?.classList.contains("working")));
     refreshSprites(agent.id);
     applyBubble(agent.id);
   });
@@ -153,6 +163,7 @@ function updateDynamicViews() {
 }
 
 /* ================= 사무실 고양이 ================= */
+// 연출 ON일 때 가끔 고양이가 지나간다. 누르면 울고 팀원들이 반응한다.
 function spawnCat() {
   if (!state.ambient) return;
   const layer = document.getElementById("catLayer");
@@ -162,6 +173,7 @@ function spawnCat() {
   cat.addEventListener("click", () => {
     bubble.textContent = pickRandom(["냐옹~", "미야아", "골골골…", "냥!"]);
     bubble.classList.add("show");
+    playSound("meow");
     const rect = cat.getBoundingClientRect();
     burst(rect.left + rect.width / 2, rect.top, ["🐾", "meow", "✨"], 7);
     agentsInProject(state.activeProjectId).filter(agent => !agent.sleeping).forEach((agent, index) =>
@@ -170,6 +182,7 @@ function spawnCat() {
   });
   cat.addEventListener("animationend", () => cat.remove());
   layer.append(cat);
+  if (Math.random() < 0.5) setTimeout(() => playSound("meow"), 900);
 }
 
 function scheduleCat() {

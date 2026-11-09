@@ -49,6 +49,7 @@ function unlockAchievement(achievementId) {
   if (!achievement) return;
   state.achievements.push(achievementId);
   showToast(`🏅 업적 달성! ${achievement.title}`);
+  playSound("achievement");
   burst(window.innerWidth / 2, window.innerHeight - 70, ["🎉", "✨", "🎊"], 10);
   renderHeaderStats();
   saveState();

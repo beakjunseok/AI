@@ -7,6 +7,7 @@ function openRoom() {
   if (!panelRoomMode) threadPinnedToBottom = true;
   panelRoomMode = true;
   panelAgentId = panelAgentId || AGENT_PRESETS[0].id;
+  if (!document.body.classList.contains("panelOpen")) playSound("panelOpen");
   document.body.classList.add("panelOpen");
   document.querySelectorAll("#app .agent.selected").forEach(node => node.classList.remove("selected"));
   renderPanel();
@@ -16,12 +17,14 @@ function openPanel(agentId) {
   if (panelAgentId !== agentId || panelRoomMode) threadPinnedToBottom = true;
   panelRoomMode = false;
   panelAgentId = agentId;
+  if (!document.body.classList.contains("panelOpen")) playSound("panelOpen");
   document.body.classList.add("panelOpen");
   document.querySelectorAll("#app .agent").forEach(node => node.classList.toggle("selected", node.dataset.agent === agentId));
   renderPanel();
 }
 
 function closePanel() {
+  if (document.body.classList.contains("panelOpen")) playSound("panelClose");
   panelAgentId = null;
   panelRoomMode = false;
   document.body.classList.remove("panelOpen");
@@ -53,7 +56,7 @@ function renderPanel() {
 
 function renderRoomHead() {
   const project = findProject(state.activeProjectId);
-  const online = [...(sampleApi ? ["claude"] : []), ...serverProviders].filter((name, index, list) => list.indexOf(name) === index);
+  const online = [...serverProviders];
   return el("div", { class: "panelHead" },
     el("div", {},
       el("h2", { class: "roomTitle" }, `💬 ${project ? project.name : "기획"} 기획방`),
@@ -241,7 +244,6 @@ function renderMessage(message) {
   const copyButton = message.pending ? null : el("button", { class: "copyBtn", type: "button", text: "복사", onclick: () => copyText(message.text) });
   const openButton = message.kind === "brief" && !message.pending ? el("button", { class: "copyBtn", type: "button", text: "열기", onclick: () => openBrief(message.briefId) }) : null;
   const who = el("span", { class: "who" }, isReview ? `🔍 ${preset.name} → ${message.targetLabel || ""} 검토` : `${preset.name} · ${ROLE_LABELS[preset.roleKey]}`, chip, kindLabel ? el("span", { class: "fallbackNote", text: kindLabel }) : null, verdictBadge, copyButton, openButton,
-    message.engine === "claude-fallback" ? el("span", { class: "fallbackNote", text: "(대타: Claude)" }) : null,
     message.engine?.startsWith("fallback:") ? el("span", { class: "fallbackNote", text: `(대타: ${providerInfo(message.engine.slice(9)).label})` }) : null,
     message.engine === "simulation" ? el("span", { class: "fallbackNote", text: "(시뮬레이션)" }) : null);
   const reviewClass = isReview ? ` review ${message.verdict || ""}` : (message.kind ? ` ${message.kind}` : "");

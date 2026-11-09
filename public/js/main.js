@@ -9,6 +9,9 @@ function bindStaticEvents() {
   document.getElementById("briefPill").addEventListener("click", openBriefList);
   document.getElementById("ambientPill").addEventListener("click", toggleAmbient);
   renderAmbientPill();
+  document.getElementById("soundPill").addEventListener("click", toggleSound);
+  renderSoundPill();
+  bindAudioUnlock();
   document.getElementById("quotaPill").addEventListener("click", openQuotaBoard);
   document.getElementById("lockPill").addEventListener("click", openAccessPrompt);
   setInterval(() => { const node = document.getElementById("panelQuota"); if (node && panelAgentId) node.textContent = `⚡ ${quotaLine(getAgent(panelAgentId).model)}`; }, 30000);
@@ -45,7 +48,6 @@ function startApp() {
   setInterval(renderWindowAndClock, 20000);
   setTimeout(spawnCat, 12000);
   scheduleCat();
-  connectAi();
   connectServer().then(() => { if (serverLocked) setTimeout(openAccessPrompt, 2600); });
 }
 

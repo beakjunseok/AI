@@ -98,15 +98,14 @@ async function streamAgentMessage(agentId, { prompt, simulate, extra = {}, maxTo
       try {
         recordUsage(engine);
         message.engine = engine === agent.model ? engine : `fallback:${engine}`;
-        const result = await callEngine(engine, prompt, ({ text }) => { message.text = text; updateMessageNode(message); }, maxTokens);
+        const result = await callEngine(engine, prompt, ({ text }) => { message.text = text; updateMessageNode(message); playSound("typing"); }, maxTokens);
         message.text = stripNarration((result.text || "").trim()) || "(빈 답장이 왔어요)";
         if (result.truncated) message.text += "\n…(길어서 잘렸어요)";
         usedEngine = engine;
         break;
       } catch (error) {
         lastError = error;
-        if (error?.code === "not_granted" && engine === "claude") { sampleApi = null; updateAiBadge(); }
-        else if (error?.code === "rate_limited") markExhausted(engine);
+        if (error?.code === "rate_limited") markExhausted(engine);
         else if (error?.code === "not_configured") serverProviders.delete(engine);
         else if (error?.code === "locked") { serverProviders.clear(); serverLocked = true; document.getElementById("lockPill").hidden = false; }
       }
@@ -117,11 +116,12 @@ async function streamAgentMessage(agentId, { prompt, simulate, extra = {}, maxTo
       message.text = simulate() + (lastError ? `\n(연결 실패 → 시뮬레이션: ${lastError.message})` : "");
     }
     message.ok = true;
+    playSound("receive");
     addLog(agent, { kind: extra.kind === "review" ? "review" : "ai", text: message.text.slice(0, 160), project: findProject(agent.location)?.name });
   } catch (error) {
-    if (error?.code === "not_granted") { sampleApi = null; updateAiBadge(); message.text = "(AI 사용 권한이 없어 시뮬레이션으로 바꿨어요)"; }
-    else if (error?.code === "rate_limited") message.text = "(요청이 많아요. 잠시 뒤 다시 말 걸어 주세요)";
+    if (error?.code === "rate_limited") message.text = "(요청이 많아요. 잠시 뒤 다시 말 걸어 주세요)";
     else message.text = `(답변 실패: ${error?.message || "알 수 없는 오류"})`;
+    playSound("error");
     say(agentId, pickRandom(preset.lines.complain));
   } finally {
     message.pending = false;
@@ -148,7 +148,7 @@ async function answerAs(agentId, isTeamRound) {
 }
 
 /* ---------- AI 교차 검증 ---------- */
-const reviewPriority = () => [...new Set(["claude", "gemini", ...Object.keys(MODEL_PROVIDERS)])];
+const reviewPriority = () => [...new Set([...FALLBACK_ORDER, ...Object.keys(MODEL_PROVIDERS)])];
 // '적당히' 규칙: 하루 최대 12회, 1:1 검사 사이 45초 쿨다운, 짧은 잡담은 건너뜀, 검사에 넘기는 답은 600자까지.
 const REVIEW_DAILY_LIMIT = 12;
 const REVIEW_COOLDOWN_MS = 45000;
@@ -242,6 +242,7 @@ async function crossReview(authorMessages, question, isTeamRound = false) {
 async function sendToAgent(agentId, text) {
   if (getAgent(agentId).sleeping) { getAgent(agentId).sleeping = false; say(agentId, pickRandom(getPreset(agentId).lines.wake)); }
   pushChat({ from: "user", to: agentId, text, channel: agentId });
+  playSound("send");
   saveState();
   await answerAs(agentId, false);
 }
@@ -252,6 +253,7 @@ async function sendToTeam(text) {
   if (!members.length) members = pickDiscussionMembers().map(getAgent);
   members = members.sort((first, second) => first.slot - second.slot).slice(0, 4);
   pushChat({ from: "user", to: "team", text });
+  playSound("send");
   saveState();
   unlockAchievement("team_round");
   const answers = [];

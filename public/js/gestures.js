@@ -49,7 +49,44 @@ function bindGesture(node, { onTap, onDragStart, onDragMove, onDrop, onDragEnd }
 }
 
 function createGhost(node) { document.body.append(node); return node; }
-function moveGhost(ghost, event) { ghost.style.left = `${event.clientX}px`; ghost.style.top = `${event.clientY}px`; }
+// 잡힌 캐릭터·간식이 손 움직임 반대쪽으로 기울었다가 진자처럼 돌아온다(감쇠 스프링 = 팔로스루). 프레임당 O(1)
+const SWING_REST_DEG = -8;
+const SWING_LIMIT_DEG = 30;
+const SWING_STIFFNESS = 0.12;
+const SWING_DAMPING = 0.82;
+const SWING_PUSH_PER_PX = -0.9;
+
+function moveGhost(ghost, event) {
+  ghost.style.left = `${event.clientX}px`;
+  ghost.style.top = `${event.clientY}px`;
+  if (!ghost.swing) ghost.swing = startGhostSwing(ghost, event.clientX);
+  ghost.swing.push += (event.clientX - ghost.swing.lastX) * SWING_PUSH_PER_PX;
+  ghost.swing.lastX = event.clientX;
+}
+
+function startGhostSwing(ghost, startX) {
+  const swing = { angle: SWING_REST_DEG, velocity: 0, push: 0, lastX: startX };
+  const step = () => {
+    if (!ghost.isConnected) return;
+    const target = clamp(SWING_REST_DEG + swing.push, -SWING_LIMIT_DEG, SWING_LIMIT_DEG);
+    swing.push *= 0.7;
+    swing.velocity = (swing.velocity + (target - swing.angle) * SWING_STIFFNESS) * SWING_DAMPING;
+    swing.angle += swing.velocity;
+    ghost.style.setProperty("--swing", `${swing.angle.toFixed(2)}deg`);
+    requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+  return swing;
+}
+
+// 내려놓은 자리에서 한 번 '쿵' 하고 눌렸다 튕기는 착지 동작.
+function playLanding(agentId) {
+  requestAnimationFrame(() => {
+    const node = document.querySelector(`#app .agent[data-agent="${agentId}"]`);
+    if (node) playAction(node, "act-land", 520);
+    playSound("land");
+  });
+}
 
 let highlightedNode = null;
 function highlightTarget(node) {
@@ -84,6 +121,7 @@ function createAgentNode(agentId) {
     onDragStart: () => {
       node.classList.add("dragging");
       setExpression(agentId, "surprised", 60000);
+      playSound("grab");
       const ghost = createGhost(el("div", { class: "agent ghost" }, el("div", { class: "bubble", text: pickRandom(getPreset(agentId).lines.grab) }), spriteImage(agentId, "", "flail")));
       return ghost;
     },
@@ -93,6 +131,7 @@ function createAgentNode(agentId) {
       expressions[agentId] = null;
       handleDrop(agentId, findDropTarget(event.clientX, event.clientY));
       if (speed > 1.5) throwDizzy(agentId); else refreshSprites(agentId);
+      playLanding(agentId);
     }
   });
   return node;
@@ -109,6 +148,7 @@ function handleDrop(agentId, target) {
 function tapAgent(agentId) {
   const agent = getAgent(agentId);
   openPanel(agentId);
+  playSound("tap");
   if (agent.sleeping) { say(agentId, pickRandom(getPreset(agentId).lines.sleepTalk)); return; }
   setExpression(agentId, "happy", 900);
   say(agentId, pickRandom(getPreset(agentId).lines.greet));
@@ -125,6 +165,7 @@ function petAgent(agentId) {
     setExpression(agentId, "surprised", 1500);
     say(agentId, pickRandom(preset.lines.petSpam));
     burstAtAgent(agentId, ["💢", "💦"], 4);
+    playSound("grumble");
     unlockAchievement("pet_spam");
     return;
   }
@@ -133,6 +174,7 @@ function petAgent(agentId) {
   setExpression(agentId, "happy", 1200);
   say(agentId, pickRandom(preset.lines.pet));
   burstAtAgent(agentId, ["+1", "👍", "✨", "LGTM"], 5);
+  playSound("pet");
   unlockAchievement("first_pet");
   saveState();
   if (panelAgentId === agentId) updatePanelLive();
@@ -141,6 +183,7 @@ function petAgent(agentId) {
 function throwDizzy(agentId) {
   const agent = getAgent(agentId);
   agent.affection = clamp(agent.affection - 2, 0, 100);
+  playSound("throw");
   setTimeout(() => {
     setExpression(agentId, "dizzy", 3000);
     say(agentId, pickRandom(getPreset(agentId).lines.dizzy), 3000);
@@ -153,7 +196,7 @@ function throwDizzy(agentId) {
 function feedSnack(agentId, snackKey) {
   const snack = SNACKS.find(item => item.key === snackKey);
   const agent = getAgent(agentId);
-  if (state.coins < snack.price) { showToast(`코인이 부족해요 (${snack.price}🪙 필요). 업무를 끝내면 모여요!`); return; }
+  if (state.coins < snack.price) { playSound("error"); showToast(`코인이 부족해요 (${snack.price}🪙 필요). 업무를 끝내면 모여요!`); return; }
   state.coins -= snack.price;
   agent.energy = clamp(agent.energy + snack.energy, 0, 100);
   agent.affection = clamp(agent.affection + snack.love, 0, 100);
@@ -162,6 +205,7 @@ function feedSnack(agentId, snackKey) {
   setExpression(agentId, "happy", 1500);
   say(agentId, wasSleeping ? `${pickRandom(getPreset(agentId).lines.wake)} ${snack.icon}` : pickRandom(getPreset(agentId).lines.snack));
   burstAtAgent(agentId, [snack.icon, "+HP", "⚡"], 6);
+  playSound("crunch");
   unlockAchievement("snack_first");
   saveState();
   renderAll();

@@ -10,9 +10,11 @@ public/            정적 페이지 (빌드 도구 없음)
   css/             base · office · board-lounge · panel · effects
   js/              전역 스코프를 공유하는 일반 스크립트(defer, 아래 순서대로 로드)
     data.js        캐릭터 프리셋, 역할, 대사 등 정적 데이터
+    ai.js          AI 공급자·무료 한도·대타 순서·서버 연결(접속 코드)
     state.js       저장/불러오기(localStorage), 프로젝트·팀원 상태
     dom.js         DOM·효과 헬퍼
-    characters.js  SVG 캐릭터 + 포즈 애니메이션(idle/walk/type/flail)
+    characters.js  SVG 캐릭터 + 포즈 애니메이션(idle/walk/type/sleep/flail)
+    sound.js       효과음(Web Audio 합성, 음원 파일 없음)
     render.js      헤더·탭·사무실·휴게실 렌더링
     motion.js      휴게실 산책·복도 심부름 등 자동 움직임
     gestures.js    탭·드래그·던지기, 상호작용
@@ -22,7 +24,7 @@ public/            정적 페이지 (빌드 도구 없음)
     chat.js        채팅(기획방/1:1)
     markdown.js    안전한 마크다운 렌더
     discussion.js  주제 토론·브레인스토밍·브리프
-    extras.js      확대·업적·AI 연결
+    extras.js      확대·업적·AI 상태 배지
     fx.js          부팅·코드 레인·글리치 연출
     main.js        초기화(startApp)
 api/               Vercel 서버리스 함수 (chat, providers, health, models)

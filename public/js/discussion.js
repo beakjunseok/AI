@@ -124,6 +124,7 @@ async function startBrainstorm(seed) {
   const hasContext = state.chat.some(message => channelOf(message) === ROOM_CHANNEL && message.from !== "system");
   if (!seed && !hasContext) { showToast("브레인스토밍할 주제를 입력칸에 적고 눌러 주세요"); return; }
   brainstormActive = true;
+  playSound("brainstorm");
   try {
     const members = pickDiscussionMembers();
     pushChat({ from: "user", to: "brainstorm", text: seed || "(지금까지 대화로 아이디어 내기)" });
@@ -172,6 +173,7 @@ async function startDiscussion(topic) {
   const members = pickDiscussionMembers();
   state.discussion = { id: nextId("d"), topic, round: 0, status: "running", members };
   pushChat({ from: "user", to: "topic", text: topic });
+  playSound("discussion");
   postSystemNote(`🧠 주제 구체화 시작 · 참가: ${members.map(id => "@" + getPreset(id).name).join(" ")} · ${DISCUSSION_DEFAULT_ROUNDS}라운드`);
   await runDiscussionRounds(DISCUSSION_DEFAULT_ROUNDS);
 }
@@ -261,6 +263,7 @@ async function writeBrief() {
     state.briefs = state.briefs.slice(0, BRIEF_KEEP);
     discussion.members.forEach(id => { setExpression(id, "happy", 1500); say(id, "브리프 완성!", 2500); });
     renderHeaderStats();
+    playSound("brief");
     openBrief(briefId);
   }
   postSystemNote(brief.ok ? "📄 브리프 완성! 복사해서 Claude에게 붙여넣으세요." : "브리프 작성에 실패했어요. 다시 시도해 주세요.");
