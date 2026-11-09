@@ -40,7 +40,7 @@ header h1{cursor:pointer}
 .chair{position:absolute;bottom:70px;left:50%;transform:translateX(-50%);width:56px;height:64px;clip-path:polygon(18% 0,82% 0,100% 18%,100% 100%,0 100%,0 18%);z-index:0;box-shadow:inset 0 -14px 0 rgba(0,0,0,.45),inset 0 0 0 2px rgba(0,0,0,.5)}
 .chair::after{content:"";position:absolute;left:50%;top:8px;width:60%;height:2px;transform:translateX(-50%);background:var(--cyan);opacity:.6;box-shadow:0 0 6px var(--cyan)}
 .seat{position:absolute;bottom:60px;left:50%;transform:translateX(-50%);z-index:1}
-/* 깊이 순서: 의자(0) < 앉은 캐릭터(1) < 걷는 캐릭터(2) < 책상(3) < 명패(4) < 복도 위 캐릭터(7) */
+/* 깊이 순서: 의자(0) < 앉은 캐릭터(1) < 자리 드나드는 캐릭터(2) < 책상(3) < 명패(4) < 통로·복도를 걷는 캐릭터(7) */
 .desk{position:relative;z-index:3;width:94%;height:46px}
 .desk::before{content:"";position:absolute;inset:0;z-index:0;background:linear-gradient(var(--deskTop) 0 9px,#262b33 9px,#181c21);clip-path:polygon(0 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,8px 100%,0 calc(100% - 8px));box-shadow:inset 0 -2px 0 var(--cyanDim)}
 .deskItems{position:absolute;left:8px;bottom:calc(100% - 4px);display:flex;gap:4px;align-items:flex-end;z-index:4}
@@ -49,6 +49,13 @@ header h1{cursor:pointer}
   background:repeating-linear-gradient(90deg,#9aa6b2 0 3px,transparent 3px 4.5px) 2px 1.5px/32px 2px no-repeat,repeating-linear-gradient(90deg,#9aa6b2 0 3px,transparent 3px 4.5px) 3px 4.5px/30px 2px no-repeat,linear-gradient(#cdd5dd 0 7px,#7d8894 7px);
   box-shadow:0 1px 0 #0b0e12,inset 0 0 0 1px #5b6672}
 .keyboard::after{content:"";position:absolute;inset:1px 2px 2px;opacity:0;background:repeating-linear-gradient(90deg,transparent 0 6px,rgba(77,232,255,.95) 6px 9px,transparent 9px 13.5px) 0 0/27px 2px no-repeat,repeating-linear-gradient(90deg,transparent 0 9px,rgba(61,255,168,.9) 9px 12px,transparent 12px 18px) 4px 3px/24px 2px no-repeat}
+/* 팀원별 키보드: 칸반=흰색 미니, 픽셀=파스텔 둥근 키캡, 커널=검은 기계식+RGB, 어서트=베이지 풀배열(텐키), 뮤트=MIDI 건반 */
+.keyboard.kb-lumi{width:30px;background:repeating-linear-gradient(90deg,#8fe9f7 0 3px,transparent 3px 4.5px) 2px 1.5px/26px 2px no-repeat,repeating-linear-gradient(90deg,#c9d1d9 0 3px,transparent 3px 4.5px) 3px 4.5px/24px 2px no-repeat,linear-gradient(#f4f7fa 0 7px,#b9c3cc 7px);box-shadow:0 1px 0 #0b0e12,inset 0 0 0 1px #9aa6b2}
+.keyboard.kb-moka{border-radius:4px;background:radial-gradient(circle,#ffb3d1 0 1.3px,transparent 1.6px) 1px 0.5px/4.5px 3.5px,radial-gradient(circle,#a8f0d8 0 1.3px,transparent 1.6px) 3.2px 3.6px/4.5px 3.5px,linear-gradient(#fff4f8 0 7px,#e7c6d4 7px);box-shadow:0 1px 0 #0b0e12,inset 0 0 0 1px #e3a9c2}
+.keyboard.kb-bit{background:repeating-linear-gradient(90deg,#2b313a 0 3px,transparent 3px 4.5px) 2px 1.5px/32px 2px no-repeat,repeating-linear-gradient(90deg,#2b313a 0 3px,transparent 3px 4.5px) 3px 4.5px/30px 2px no-repeat,linear-gradient(90deg,#ff5ac8,#4de8ff,#3dffa8,#ffb648,#ff5ac8);background-size:32px 2px,30px 2px,200% 100%;box-shadow:0 1px 0 #000,inset 0 0 0 1px #11151a,0 0 6px rgba(77,232,255,.55);animation:rgbFlow 3s linear infinite}
+@keyframes rgbFlow{to{background-position:2px 1.5px,3px 4.5px,200% 0}}
+.keyboard.kb-dubu{width:44px;background:repeating-linear-gradient(90deg,#8a7f6d 0 3px,transparent 3px 4.5px) 2px 1.5px/30px 2px no-repeat,repeating-linear-gradient(90deg,#8a7f6d 0 3px,transparent 3px 4.5px) 3px 4.5px/28px 2px no-repeat,repeating-linear-gradient(90deg,#6f6556 0 2.5px,transparent 2.5px 4px) 34px 1.5px/9px 5px no-repeat,linear-gradient(#e8dfcc 0 7px,#a99d86 7px);box-shadow:0 1px 0 #0b0e12,inset 0 0 0 1px #8a7f6d}
+.keyboard.kb-sol{height:10px;border-radius:1px;background:repeating-linear-gradient(90deg,#11151a 0 2px,transparent 2px 4.5px,#11151a 4.5px 6.5px,transparent 6.5px 9px,transparent 9px 13.5px) 2px 0/34px 5px no-repeat,repeating-linear-gradient(90deg,#f6f6f2 0 4px,#9aa0a6 4px 4.5px) 0 0/100% 8px no-repeat,linear-gradient(#f6f6f2 0 8px,#3a2a24 8px);box-shadow:0 1px 0 #0b0e12,inset 0 0 0 1px #3a2a24}
 .slot.working .keyboard::after{opacity:1;animation:keyTap .42s steps(3) infinite}
 @keyframes keyTap{0%{background-position:0 0,4px 3px}33%{background-position:9px 0,-5px 3px}66%{background-position:-4px 0,10px 3px}100%{background-position:5px 0,0 3px}}
 .monitorStand{position:absolute;right:20px;bottom:calc(100% - 1px);width:6px;height:9px;background:#3c4652;z-index:3;pointer-events:none}
@@ -120,8 +127,8 @@ header h1{cursor:pointer}
 .exitSign{position:absolute;left:8px;top:4px;font:700 8px var(--mono);color:#3dffa8;letter-spacing:.1em;text-shadow:0 0 6px rgba(61,255,168,.7)}
 .corridorPlant{position:absolute;left:8px;bottom:2px;font-size:18px;filter:saturate(.6)}
 .waterCooler{position:absolute;right:44px;top:6px;width:14px;height:32px;background:linear-gradient(#5fb8d6 0 35%,#cfd8e0 35%);border-radius:5px 5px 2px 2px;box-shadow:inset 0 0 0 1px #2b323b}
-.walker{position:absolute;left:0;top:0;width:var(--agentW);z-index:2;will-change:transform}
-.walker.inCorridor{z-index:7}
+.walker{position:absolute;left:0;top:0;width:var(--agentW);z-index:7;will-change:transform}
+.walker.behindDesk{z-index:2}
 .walker img{width:var(--agentW);height:var(--agentH);image-rendering:auto;display:block}
 /* 복도에 내려놓은 팀원: 복도 바닥에 서서 쉬거나 서성인다 */
 #corridorCrew{position:absolute;left:12px;right:12px;bottom:14px;height:46px;pointer-events:none;z-index:7}

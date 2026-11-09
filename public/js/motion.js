@@ -89,15 +89,17 @@ function walkAlong(walker, points) {
     return { transform: `translate(${point.x}px, ${point.y}px)`, offset: travelled / total };
   });
   const duration = (total / WALK_SPEED_PX_PER_SECOND) * 1000;
-  // 구간마다 방향을 바꾸고, 복도 위를 걸을 땐 책상보다 앞(가까이), 책상 사이를 걸을 땐 책상 뒤로 그린다.
+  // 구간마다 방향을 바꾸고 깊이를 정한다: 자리에 들어가고 나오는 구간(좌석에 닿는 첫·마지막 구간)만 책상 뒤,
+  // 통로·복도처럼 책상 옆을 지나가는 구간은 책상 앞으로 그린다.
   const floorY = corridorY();
-  const isCorridorSegment = (from, to) => Math.abs(from.y - floorY) < 2 && Math.abs(to.y - floorY) < 2;
-  walker.classList.toggle("inCorridor", points.length > 1 && isCorridorSegment(points[0], points[1]));
+  const lastIndex = points.length - 2;
+  const touchesSeat = index => (index === 0 && Math.abs(points[0].y - floorY) >= 2) || (index === lastIndex && Math.abs(points[lastIndex + 1].y - floorY) >= 2);
+  walker.classList.toggle("behindDesk", points.length > 1 && touchesSeat(0));
   const turnTimers = points.slice(1).map((point, index) => {
     const startAt = (distances.slice(0, index).reduce((sum, value) => sum + value, 0) / total) * duration;
     return setTimeout(() => {
       if (point.x !== points[index].x) walker.classList.toggle("facingLeft", point.x < points[index].x);
-      walker.classList.toggle("inCorridor", isCorridorSegment(points[index], point));
+      walker.classList.toggle("behindDesk", touchesSeat(index));
     }, startAt);
   });
   const animation = walker.animate(frames, { duration, easing: "linear", fill: "forwards" });
