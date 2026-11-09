@@ -180,6 +180,13 @@ function planErrand(agent) {
   const coworkers = deskWorkers().filter(other => other.id !== agent.id && !errandAgents.has(other.id));
   const emptySlot = firstEmptySlot(agent.location);
   const options = [];
+  // 옆자리 동료가 졸고 있으면 높은 확률로 깨우러 간다.
+  const sleepyFriend = coworkers.find(other => other.sleeping);
+  if (sleepyFriend && Math.random() < 0.75) {
+    const seat = seatPoint(sleepyFriend.slot);
+    if (seat) return { target: { x: seat.x + 34, y: seat.y }, startLine: `@${getPreset(sleepyFriend.id).name} ${lineFor(agent.id, "wakeOther")}`, arriveLine: lineFor(agent.id, "wakeOther"), stayMs: 2200,
+      onArrive: () => { setTimeout(() => { if (sleepyFriend.sleeping) { sleepyFriend.energy = Math.max(sleepyFriend.energy, 50); wakeUp(sleepyFriend); } }, 700); } };
+  }
   if (coworkers.length) {
     const friend = pickRandom(coworkers);
     const target = seatPoint(friend.slot);

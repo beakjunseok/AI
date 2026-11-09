@@ -88,6 +88,7 @@ function tickOffice() {
       agent.energy = clamp(agent.energy + (agent.location === "lounge" ? 3 : 2), 0, 100);
       if (agent.sleeping && agent.energy >= 60) wakeUp(agent);
       else if (agent.sleeping && Math.random() < 0.04) say(agent.id, lineFor(agent.id, "sleepTalk"));
+      else if (agent.location === "lounge" && Math.random() < 0.01 && maybeCommute(agent)) return;
       else if (!agent.sleeping && Math.random() < 0.025) say(agent.id, lineFor(agent.id, isInPod(agent) ? "pod" : ambientLineKey()));
       return;
     }

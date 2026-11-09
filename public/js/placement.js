@@ -22,6 +22,8 @@ function moveAgent(agentId, destination, requestedSlot) {
   if (destination === "lounge") {
     if (fromLocation === "lounge") return;
     releaseTask(agent);
+    if (findProject(fromLocation)) agent.homeProject = fromLocation;
+    agent.loungeSince = Date.now();
     agent.location = "lounge"; agent.slot = null;
     addLog(agent, { kind: "move", text: "대기 공간으로 이동 (휴식 중)" });
   } else {
@@ -108,6 +110,22 @@ function moveToPod(agentId) {
   saveState();
   renderAll();
   say(agentId, lineFor(agentId, "pod"));
+}
+
+// 휴게실에서 충분히 쉰 팀원은 스스로 출근한다: 마지막에 일하던 사무실(없으면 지금 보는 사무실)의 빈 책상으로.
+const COMMUTE_MIN_ENERGY = 75;
+const COMMUTE_MIN_REST_MS = 60000;
+function maybeCommute(agent) {
+  if (agent.sleeping || agent.energy < COMMUTE_MIN_ENERGY || errandAgents.has(agent.id)) return false;
+  if (Date.now() - (agent.loungeSince || 0) < COMMUTE_MIN_REST_MS) return false;
+  const project = findProject(agent.homeProject) || findProject(state.activeProjectId);
+  const slot = project ? firstEmptySlot(project.id) : null;
+  if (slot == null) return false;
+  moveAgent(agent.id, project.id, slot);
+  say(agent.id, lineFor(agent.id, "commute", "drop"), 3000);
+  if (project.id === state.activeProjectId) playLanding(agent.id);
+  else showToast(`${getPreset(agent.id).name} → '${project.name}' 출근`);
+  return true;
 }
 
 function closeProject(projectId) {
