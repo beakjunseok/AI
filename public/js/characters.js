@@ -264,6 +264,8 @@ function blinkLoop() {
 function say(agentId, text, durationMs = 2800) {
   bubbles[agentId] = { text, until: Date.now() + durationMs };
   applyBubble(agentId);
+  const agent = getAgent(agentId);
+  if (agent && (agent.location === "lounge" || agent.location === state.activeProjectId)) playVoice(agentId, text);
 }
 
 function applyBubble(agentId) {

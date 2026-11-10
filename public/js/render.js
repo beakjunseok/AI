@@ -15,6 +15,7 @@ function switchProject(projectId) {
   delete state.discussionByProject[projectId];
   threadPinnedToBottom = true;
   unseenMessageCount = 0;
+  playSound("switchProject");
   return true;
 }
 

@@ -87,7 +87,7 @@ function tickOffice() {
     if (agent.location === "lounge" || isOffDesk(agent)) {
       agent.energy = clamp(agent.energy + (agent.location === "lounge" ? 3 : 2), 0, 100);
       if (agent.sleeping && agent.energy >= 60) wakeUp(agent);
-      else if (agent.sleeping && Math.random() < 0.04) say(agent.id, lineFor(agent.id, "sleepTalk"));
+      else if (agent.sleeping && Math.random() < 0.04) { say(agent.id, lineFor(agent.id, "sleepTalk")); playSound("snore"); }
       else if (agent.location === "lounge" && Math.random() < 0.01 && maybeCommute(agent)) return;
       else if (!agent.sleeping && Math.random() < 0.025) say(agent.id, lineFor(agent.id, isInPod(agent) ? "pod" : ambientLineKey()));
       return;
@@ -97,7 +97,7 @@ function tickOffice() {
     if (agent.sleeping) {
       agent.energy = clamp(agent.energy + 1, 0, 100);
       if (agent.energy >= 45) wakeUp(agent);
-      else if (Math.random() < 0.04) say(agent.id, pickRandom(preset.lines.sleepTalk));
+      else if (Math.random() < 0.04) { say(agent.id, pickRandom(preset.lines.sleepTalk)); if (agent.location === state.activeProjectId) playSound("snore"); }
       return;
     }
     if (aiBusyAgents.has(agent.id) || errandAgents.has(agent.id)) return;
@@ -113,6 +113,7 @@ function tickOffice() {
   });
   maybePairChat();
   autoFeedSleepers();
+  playDeskTyping();
   updateDynamicViews();
   saveState();
 }
@@ -141,6 +142,14 @@ function syncAgentPose(agent, isWorking) {
 }
 
 // 구조는 그대로 두고 바·모니터·표정·포즈·말풍선만 갱신 → 드래그 중 깜빡임 없음. O(팀원 수)
+// 보고 있는 사무실에서 일하는 팀원 수만큼 키보드 소리를 틱 사이사이에 흩뿌린다.
+function playDeskTyping() {
+  const typingCount = document.querySelectorAll("#deskGrid .slot.working").length;
+  for (let index = 0; index < typingCount; index += 1) {
+    if (Math.random() < 0.6) setTimeout(() => playSound("keyClick"), Math.random() * TICK_MS);
+  }
+}
+
 function updateDynamicViews() {
   state.agents.forEach(agent => {
     const project = findProject(agent.location);

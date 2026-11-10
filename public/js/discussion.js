@@ -58,6 +58,7 @@ async function runDiscussionRounds(roundCount) {
   discussionStopRequested = false;
   for (let step = 0; step < roundCount && !discussionStopRequested; step++) {
     discussion.round += 1;
+    playSound("round");
     for (const agentId of discussion.members) {
       if (discussionStopRequested) break;
       const message = await streamAgentMessage(agentId, {
@@ -330,5 +331,6 @@ function toggleAmbient() {
   saveState();
   renderAmbientPill();
   renderAll();
+  playSound(state.ambient ? "toggleOn" : "toggleOff");
   showToast(state.ambient ? "사무실 연출을 켰어요 (자동 업무·잡담·고양이)" : "연출을 껐어요. 팀원들이 조용히 대화에만 집중해요");
 }

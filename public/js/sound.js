@@ -4,7 +4,7 @@
 // 같은 소리가 연달아 터지지 않게 종류별 최소 간격을 둔다. 소리 1회당 O(음 개수)
 
 const SOUND_MASTER_VOLUME = 0.3;
-const SOUND_MIN_GAP_MS = { typing: 70, step: 180, default: 80 };
+const SOUND_MIN_GAP_MS = { typing: 70, step: 180, keyClick: 45, ui: 40, default: 80 };
 const SOUND_UNLOCK_GRACE_MS = 400;
 
 let audioContext = null;
@@ -31,9 +31,10 @@ function ensureAudioContext() {
 
 // 사용자 입력 안에서 호출돼야 재생이 허용된다(iOS Safari 포함).
 function unlockAudio() {
-  if (!state.sound) return;
+  if (!state.sound && !state.bgm) return;
   const context = ensureAudioContext();
   if (context && context.state === "suspended") context.resume().catch(() => {});
+  if (state.bgm && !bgm.playing) startBgm();
 }
 
 // 한 음: 주파수 미끄러짐(glide) + 짧은 어택 + 지수 감쇠.
@@ -53,12 +54,18 @@ function playTone(context, { frequency, endFrequency, type = "sine", startOffset
 }
 
 // 짧은 잡음: 발소리·바스락·쿵·휙. 필터 종류와 대역으로 음색을 고른다.
-function playNoise(context, { startOffset = 0, duration = 0.08, volume = 0.25, filterType = "bandpass", frequency = 1200, endFrequency, q = 1 }) {
+// 0.5초 백색잡음 버퍼(효과음·BGM 드럼 공용, 한 번만 만든다).
+function getNoiseBuffer(context) {
   if (!noiseBuffer) {
     noiseBuffer = context.createBuffer(1, Math.floor(context.sampleRate * 0.5), context.sampleRate);
     const samples = noiseBuffer.getChannelData(0);
     for (let index = 0; index < samples.length; index += 1) samples[index] = Math.random() * 2 - 1;
   }
+  return noiseBuffer;
+}
+
+function playNoise(context, { startOffset = 0, duration = 0.08, volume = 0.25, filterType = "bandpass", frequency = 1200, endFrequency, q = 1 }) {
+  getNoiseBuffer(context);
   const startTime = context.currentTime + startOffset;
   const source = context.createBufferSource();
   const filter = context.createBiquadFilter();
@@ -155,9 +162,62 @@ const SOUND_RECIPES = {
     oscillator.start(startTime);
     oscillator.stop(startTime + 0.5);
   },
+  // 추가 효과음
+  ui: context => playTone(context, { frequency: 1800, endFrequency: 1500, duration: 0.025, volume: 0.06 }),
+  toggleOn: context => { playTone(context, { frequency: 660, duration: 0.06, volume: 0.16 }); playTone(context, { frequency: 990, startOffset: 0.06, duration: 0.08, volume: 0.16 }); },
+  toggleOff: context => { playTone(context, { frequency: 990, duration: 0.06, volume: 0.14 }); playTone(context, { frequency: 620, startOffset: 0.06, duration: 0.09, volume: 0.14 }); },
+  keyClick: context => playNoise(context, { duration: 0.012 + Math.random() * 0.01, volume: 0.03 + Math.random() * 0.02, filterType: "bandpass", frequency: 2500 + Math.random() * 2500, q: 3 }),
+  brew: context => {
+    [0, 0.18, 0.4, 0.62].forEach(startOffset => playNoise(context, { startOffset, duration: 0.16, volume: 0.07, filterType: "lowpass", frequency: 700 + Math.random() * 300, endFrequency: 300 }));
+    playTone(context, { frequency: NOTE.G6, startOffset: 0.9, duration: 0.25, volume: 0.1 });
+  },
+  vend: context => {
+    playTone(context, { frequency: 140, endFrequency: 80, type: "square", duration: 0.08, volume: 0.08 });
+    playNoise(context, { startOffset: 0.08, duration: 0.07, volume: 0.15, filterType: "lowpass", frequency: 900 });
+  },
+  purr: context => {
+    for (let index = 0; index < 8; index += 1) playNoise(context, { startOffset: index * 0.11, duration: 0.09, volume: 0.06, filterType: "lowpass", frequency: 220, q: 4 });
+  },
+  snore: context => {
+    playNoise(context, { duration: 0.7, volume: 0.06, filterType: "bandpass", frequency: 300, endFrequency: 600, q: 2 });
+    playNoise(context, { startOffset: 0.9, duration: 0.5, volume: 0.04, filterType: "bandpass", frequency: 900, endFrequency: 400, q: 2 });
+  },
+  alarm: context => [0, 0.16, 0.32].forEach(startOffset => playTone(context, { frequency: 1760, type: "square", startOffset, duration: 0.09, volume: 0.07 })),
+  commute: context => playNotes(context, [[NOTE.E6, 0, 0.2], [NOTE.C6, 0.18, 0.35]], { type: "sine", volume: 0.18 }),
+  sit: context => { playNoise(context, { duration: 0.14, volume: 0.12, filterType: "lowpass", frequency: 400 }); playTone(context, { frequency: 220, endFrequency: 160, duration: 0.12, volume: 0.1 }); },
+  switchProject: context => { playNoise(context, { duration: 0.16, volume: 0.08, frequency: 900, endFrequency: 3000, q: 2 }); playTone(context, { frequency: 520, endFrequency: 880, startOffset: 0.05, duration: 0.1, volume: 0.12 }); },
+  taskAdd: context => playTone(context, { frequency: 700, endFrequency: 1050, type: "triangle", duration: 0.08, volume: 0.18 }),
+  round: context => { playNoise(context, { duration: 0.12, volume: 0.07, filterType: "highpass", frequency: 2500 }); playTone(context, { frequency: NOTE.D6, startOffset: 0.08, duration: 0.18, volume: 0.12 }); },
+  glitch: context => [0, 0.03, 0.07].forEach(startOffset => playTone(context, { frequency: 200 + Math.random() * 2400, type: "square", startOffset, duration: 0.02, volume: 0.025 })),
   yawn: context => playTone(context, { frequency: 520, endFrequency: 280, duration: 0.6, volume: 0.12, attack: 0.08 }),
   wake: context => playTone(context, { frequency: 300, endFrequency: 760, duration: 0.22, volume: 0.16 })
 };
+
+// 팀원별 말소리: 말풍선이 뜰 때 캐릭터 목소리 높이로 '삐빗' 하고 웅얼거린다(동물의 숲 느낌). 글자 수에 비례해 2~5음.
+const VOICE_PROFILES = {
+  lumi: { base: 620, type: "square", spread: 0.25 },
+  moka: { base: 700, type: "triangle", spread: 0.15 },
+  bit: { base: 300, type: "sawtooth", spread: 0.1 },
+  dubu: { base: 400, type: "square", spread: 0.05 },
+  sol: { base: 820, type: "sine", spread: 0.2 }
+};
+const VOICE_MIN_GAP_MS = 500;
+const voiceLastAt = {};
+
+function playVoice(agentId, text) {
+  const profile = VOICE_PROFILES[agentId];
+  if (!profile || !state.sound || document.hidden || !audioContext || audioContext.state !== "running") return;
+  const now = performance.now();
+  if (now - (voiceLastAt[agentId] || 0) < VOICE_MIN_GAP_MS) return;
+  voiceLastAt[agentId] = now;
+  const syllables = clamp(Math.ceil(String(text || "").length / 7), 2, 5);
+  try {
+    for (let index = 0; index < syllables; index += 1) {
+      const frequency = profile.base * (1 + (Math.random() * 2 - 1) * profile.spread);
+      playTone(audioContext, { frequency, endFrequency: frequency * (0.9 + Math.random() * 0.2), type: profile.type, startOffset: index * 0.075, duration: 0.05, volume: profile.type === "sine" ? 0.07 : 0.035 });
+    }
+  } catch (error) { /* 무시 */ }
+}
 
 // 이름으로 효과음을 낸다. 소리 OFF·탭이 숨겨짐·잠금 해제 전이면 아무것도 하지 않는다. 실패해도 앱 동작엔 영향 없음.
 function playSound(name) {
@@ -181,7 +241,7 @@ function toggleSound() {
   state.sound = !state.sound;
   saveState();
   renderSoundPill();
-  if (state.sound) { unlockAudio(); playSound("tap"); }
+  if (state.sound) { unlockAudio(); playSound("toggleOn"); }
   showToast(state.sound ? "효과음을 켰어요" : "효과음을 껐어요");
 }
 
@@ -189,4 +249,6 @@ function toggleSound() {
 function bindAudioUnlock() {
   const handler = () => unlockAudio();
   ["pointerdown", "keydown", "touchstart"].forEach(type => document.addEventListener(type, handler, { capture: true, passive: true }));
+  // 모든 버튼에 아주 작은 '딸깍' (기능별 효과음과 겹쳐도 거슬리지 않을 만큼 작게)
+  document.addEventListener("click", event => { if (event.target.closest("button, .pill, select")) playSound("ui"); }, { capture: true, passive: true });
 }

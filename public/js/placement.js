@@ -109,6 +109,7 @@ function moveToPod(agentId) {
   delete loungeOffsets[agentId];
   saveState();
   renderAll();
+  playSound("sit");
   say(agentId, lineFor(agentId, "pod"));
 }
 
@@ -123,6 +124,7 @@ function maybeCommute(agent) {
   if (slot == null) return false;
   moveAgent(agent.id, project.id, slot);
   say(agent.id, lineFor(agent.id, "commute", "drop"), 3000);
+  playSound("commute");
   if (project.id === state.activeProjectId) playLanding(agent.id);
   else showToast(`${getPreset(agent.id).name} → '${project.name}' 출근`);
   return true;

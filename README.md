@@ -15,7 +15,8 @@ public/            정적 페이지 (빌드 도구 없음)
     state.js       저장/불러오기(localStorage), 프로젝트·팀원 상태
     dom.js         DOM·효과 헬퍼
     characters.js  SVG 캐릭터 + 포즈 애니메이션(idle/walk/type/sleep/flail)
-    sound.js       효과음(Web Audio 합성, 음원 파일 없음)
+    sound.js       효과음 38종 + 팀원별 말소리(Web Audio 합성, 음원 파일 없음)
+    bgm.js         실시간 생성 로파이 BGM(코드 진행·드럼·멜로디, 밤·토론 분위기 반영)
     render.js      헤더·탭·사무실·휴게실 렌더링
     motion.js      휴게실 산책·복도 심부름 등 자동 움직임
     gestures.js    탭·드래그·던지기, 상호작용

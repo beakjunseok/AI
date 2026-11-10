@@ -241,7 +241,7 @@ function toggleAutoSnack() {
   state.autoSnack = !state.autoSnack;
   saveState();
   renderLounge();
-  playSound("tap");
+  playSound(state.autoSnack ? "toggleOn" : "toggleOff");
   showToast(state.autoSnack ? "🤖 자동 간식 ON: 잠든 팀원에게 코인으로 간식을 줘요" : "자동 간식 OFF");
   autoFeedSleepers();
 }
@@ -258,7 +258,8 @@ function feedSnack(agentId, snackKey) {
   setExpression(agentId, "happy", 1500);
   say(agentId, wasSleeping ? `${pickRandom(getPreset(agentId).lines.wake)} ${snack.icon}` : pickRandom(getPreset(agentId).lines.snack));
   burstAtAgent(agentId, [snack.icon, "+HP", "⚡"], 6);
-  playSound("crunch");
+  playSound("vend");
+  setTimeout(() => playSound("crunch"), 160);
   unlockAchievement("snack_first");
   saveState();
   renderAll();

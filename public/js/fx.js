@@ -55,6 +55,7 @@ function scheduleGlitch() {
   setTimeout(() => {
     const title = document.querySelector("header h1");
     title.classList.remove("glitch"); void title.offsetWidth; title.classList.add("glitch");
+    if (Math.random() < 0.25) playSound("glitch");
     scheduleGlitch();
   }, 5000 + Math.random() * 7000);
 }

@@ -185,7 +185,7 @@ function planErrand(agent) {
   if (sleepyFriend && Math.random() < 0.75) {
     const seat = seatPoint(sleepyFriend.slot);
     if (seat) return { target: { x: seat.x + 34, y: seat.y }, startLine: `@${getPreset(sleepyFriend.id).name} ${lineFor(agent.id, "wakeOther")}`, arriveLine: lineFor(agent.id, "wakeOther"), stayMs: 2200,
-      onArrive: () => { setTimeout(() => { if (sleepyFriend.sleeping) { sleepyFriend.energy = Math.max(sleepyFriend.energy, 50); wakeUp(sleepyFriend); } }, 700); } };
+      onArrive: () => { playSound("alarm"); setTimeout(() => { if (sleepyFriend.sleeping) { sleepyFriend.energy = Math.max(sleepyFriend.energy, 50); wakeUp(sleepyFriend); } }, 700); } };
   }
   if (coworkers.length) {
     const friend = pickRandom(coworkers);
@@ -198,7 +198,7 @@ function planErrand(agent) {
     if (target) options.push({ target, newSlot: emptySlot, startLine: "자리 좀 바꿔볼까…", arriveLine: pickRandom(preset.lines.drop), stayMs: 600 });
   }
   options.push({ target: coffeePoint(), startLine: `☕ ${lineFor(agent.id, "coffee")}`, arriveLine: pickRandom(preset.lines.snack), stayMs: 1800,
-    onArrive: () => { agent.energy = clamp(agent.energy + 8, 0, 100); } });
+    onArrive: () => { agent.energy = clamp(agent.energy + 8, 0, 100); playSound("brew"); } });
   return pickRandom(options);
 }
 
@@ -244,6 +244,7 @@ async function wanderBack(agent) {
       await walkTo(coffeePoint(), `☕ ${lineFor(agent.id, "coffee")}`);
       bubble.textContent = pickRandom(preset.lines.snack);
       agent.energy = clamp(agent.energy + 8, 0, 100);
+      if (!walker.hidden) playSound("brew");
       await pause(1600);
     } else if (roll < 0.5 && coworkers.length) {
       const friend = pickRandom(coworkers);
@@ -319,6 +320,7 @@ function maybePetCat(cat) {
       const catRect = cat.getBoundingClientRect();
       burst(catRect.left + catRect.width / 2, catRect.top, ["💕", "🐾", "✨"], 6);
       playSound("meow");
+      setTimeout(() => playSound("purr"), 600);
       agent.affection = clamp(agent.affection + 1, 0, 100);
     },
     onLeave: walker => {
@@ -352,6 +354,7 @@ async function petCatFromSpot(agent, cat, catX) {
     const catRect = cat.getBoundingClientRect();
     burst(catRect.left + catRect.width / 2, catRect.top, ["💕", "🐾", "✨"], 6);
     playSound("meow");
+    setTimeout(() => playSound("purr"), 600);
     agent.affection = clamp(agent.affection + 1, 0, 100);
     await pause(CAT_PET_STAY_MS);
   } finally {

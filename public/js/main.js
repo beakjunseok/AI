@@ -11,6 +11,8 @@ function bindStaticEvents() {
   renderAmbientPill();
   document.getElementById("soundPill").addEventListener("click", toggleSound);
   renderSoundPill();
+  document.getElementById("bgmPill").addEventListener("click", toggleBgm);
+  renderBgmPill();
   bindAudioUnlock();
   document.getElementById("quotaPill").addEventListener("click", openQuotaBoard);
   document.getElementById("lockPill").addEventListener("click", openAccessPrompt);
@@ -29,6 +31,7 @@ function bindStaticEvents() {
     findProject(state.activeProjectId).tasks.push({ id: nextId("t"), title, roleKey: document.getElementById("taskRoleSelect").value, assigneeId: null, progress: 0, done: false, createdBy: "user" });
     input.value = "";
     saveState(); renderTaskList();
+    playSound("taskAdd");
     showToast("업무를 올렸어요. 맞는 팀원이 가져갈 거예요");
   });
 }
