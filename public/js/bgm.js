@@ -1,23 +1,20 @@
-/* ================= BGM (Web Audio 실시간 생성 · 음원 파일 없음) ================= */
-// 신나는 신스웨이브/시티팝 루프를 코드로 즉석 작곡·연주한다. 저작권 걱정 없음, 다운로드 0바이트.
-// 구성: 펌핑 패드(사이드체인) · 16분 아르페지오 · 8분 드라이빙 베이스 · 펜타토닉 멜로디(에코) · 포온더플로어 드럼.
-// 스케줄러는 ~150ms 앞을 미리 예약하는 lookahead 방식(타이머 지터에도 박자가 흔들리지 않음). 틱당 O(1)
-// 분위기: 밤(21~6시)은 조금 차분하게, 토론·브레인스토밍 중엔 더 빠르고 꽉 차게. 8마디마다 코드 진행이 바뀐다.
+/* ================= BGM (Web Audio 실시간 연주 · 음원 파일 없음) ================= */
+// 직접 작곡한 약 2분 20초짜리 신스팝 곡 'Overclock'을 코드로 연주한다. 저작권 걱정 없음, 다운로드 0바이트.
+// 곡 구조(64마디 · 108 BPM): 인트로 → 벌스 → 프리코러스 → 코러스 → 포스트(아르페지오 솔로) → 벌스2 →
+//   프리 → 코러스 → 브릿지(드럼 빠짐) → 마지막 코러스(전조 +2) → 아웃트로. 섹션마다 악기 편성·드럼·베이스가 다르다.
+// 한 바퀴 돌면 키를 바꿔(0 → +3 → -2 반음) 다시 시작해서 같은 곡이 똑같이 반복되지 않는다.
+// 스케줄러는 ~150ms 앞을 미리 예약하는 lookahead 방식(타이머 지터에도 박자가 흔들리지 않음). 틱당 O(그 박의 음 수)
 
 const BGM_VOLUME = 0.45;
 const BGM_LOOKAHEAD_SECONDS = 0.15;
 const BGM_TICK_MS = 30;
 const BGM_FADE_SECONDS = 1.6;
-const BGM_SWING = 0.05;
-// 섹션별 코드(미디 번호)와 베이스 루트. A: Fmaj7–G–Em7–Am7(시티팝 4-5-3-6), B: Am–F–C–G(6-4-1-5)
-const BGM_SECTIONS = [
-  { chords: [[53, 57, 60, 64], [55, 59, 62, 67], [52, 55, 59, 62], [57, 60, 64, 67]], bass: [41, 43, 40, 45] },
-  { chords: [[57, 60, 64, 69], [53, 57, 60, 65], [48, 52, 55, 60], [55, 59, 62, 67]], bass: [45, 41, 36, 43] }
-];
-const BGM_MELODY_SCALE = [69, 72, 74, 76, 79, 81, 84];
+const BGM_SWING = 0.04;
+const BGM_BPM = 108;
+const BGM_LOOP_TRANSPOSE = [0, 3, -2];
 
 const midiToHz = midi => 440 * 2 ** ((midi - 69) / 12);
-const bgm = { playing: false, timer: null, nextStepTime: 0, step: 0, bar: 0, melodyIndex: 2, bus: null, padBus: null, output: null, warmth: null, echoInput: null, crackle: null };
+const bgm = { playing: false, timer: null, nextStepTime: 0, step: 0, bar: 0, bus: null, padBus: null, output: null, warmth: null, echoInput: null, crackle: null };
 
 // 출력 경로: 각 악기 → bus → 따뜻한 로우패스 → output(페이드용) → 스피커. 멜로디는 에코(딜레이 피드백)도 거친다.
 function buildBgmGraph(context) {
@@ -136,13 +133,6 @@ function duckPad(context, time) {
 const playBgmOpenHat = (context, time) => playBgmNoise(context, time, { filterType: "highpass", frequency: 6500, peak: 0.03, release: 0.16 });
 const playBgmClap = (context, time) => [0, 0.012, 0.024].forEach(offset => playBgmNoise(context, time + offset, { filterType: "bandpass", frequency: 1400, q: 1.2, peak: 0.05, release: 0.12 }));
 
-function playBgmMelody(context, midi, time, duration) {
-  const envelope = bgmEnvelope(context, time, { attack: 0.01, hold: duration * 0.4, release: duration * 1.4, peak: 0.04 });
-  envelope.gain.connect(bgm.bus);
-  envelope.gain.connect(bgm.echoInput);
-  bgmOscillator(context, { type: "triangle", frequency: midiToHz(midi), startTime: time, endTime: envelope.endTime, destination: envelope.gain });
-}
-
 function playBgmNoise(context, time, { filterType, frequency, q = 1, peak, release }) {
   const source = context.createBufferSource();
   source.buffer = getNoiseBuffer(context);
@@ -200,71 +190,168 @@ function startBgmCrackle(context) {
   bgm.crackle = source;
 }
 
-function bgmMood() {
-  const hour = new Date().getHours();
-  const isNight = hour >= 21 || hour < 6;
-  const isBusy = typeof isDiscussionActive === "function" && isDiscussionActive();
-  return {
-    bpm: (isNight ? 100 : 106) + (isBusy ? 6 : 0),
-    padCutoff: isNight ? 1600 : 2600,
-    drums: isBusy ? 1 : isNight ? 0.75 : 0.9,
-    arp: isNight ? 0.7 : 0.85,
-    melody: isBusy ? 0.5 : isNight ? 0.3 : 0.4
-  };
+/* ---------- 곡 데이터 ---------- */
+// 코드: [화음 음들(미디), 베이스 루트]
+const BGM_CHORDS = {
+  Am7: [[57, 60, 64, 67], 45], Fmaj7: [[53, 57, 60, 64], 41], C: [[55, 60, 64, 67], 48], G: [[55, 59, 62, 67], 43],
+  Dm7: [[50, 53, 57, 60], 38], Em7: [[52, 55, 59, 62], 40], Gsus: [[55, 60, 62, 67], 43], F: [[53, 57, 60, 65], 41],
+  G7: [[55, 59, 62, 65], 43], Em: [[52, 55, 59, 64], 40], E7: [[52, 56, 59, 62], 40]
+};
+// 멜로디: 마디별 [16분음표 위치, 미디 음, 길이(16분 단위)]
+const LEAD_VERSE = [
+  [[0, 76, 2], [2, 74, 2], [4, 72, 2], [6, 69, 4], [12, 72, 2], [14, 74, 2]],
+  [[0, 76, 3], [3, 77, 1], [4, 76, 2], [6, 72, 6], [14, 69, 2]],
+  [[0, 67, 2], [2, 69, 2], [4, 72, 2], [6, 76, 4], [10, 74, 2], [12, 72, 4]],
+  [[0, 74, 6], [6, 71, 2], [8, 67, 6]],
+  [[0, 76, 2], [2, 74, 2], [4, 72, 2], [6, 69, 4], [12, 72, 2], [14, 74, 2]],
+  [[0, 76, 3], [3, 77, 1], [4, 76, 2], [6, 79, 6], [14, 77, 2]],
+  [[0, 76, 2], [2, 74, 2], [4, 72, 2], [6, 76, 4], [10, 79, 2], [12, 81, 4]],
+  [[0, 74, 2], [2, 76, 2], [4, 79, 4], [8, 76, 4], [12, 74, 4]]
+];
+const LEAD_PRE = [
+  [[0, 69, 4], [4, 72, 4], [8, 74, 4], [12, 77, 4]],
+  [[0, 79, 4], [4, 76, 4], [8, 74, 4], [12, 71, 4]],
+  [[0, 72, 4], [4, 77, 4], [8, 81, 8]],
+  [[0, 79, 8], [8, 74, 2], [10, 76, 2], [12, 77, 2], [14, 79, 2]]
+];
+const LEAD_CHORUS = [
+  [[0, 81, 2], [2, 79, 2], [4, 81, 2], [6, 84, 4], [10, 81, 2], [12, 79, 4]],
+  [[0, 79, 2], [2, 77, 2], [4, 79, 2], [6, 83, 4], [10, 79, 2], [12, 74, 4]],
+  [[0, 76, 2], [2, 79, 2], [4, 83, 4], [8, 81, 2], [10, 79, 2], [12, 76, 4]],
+  [[0, 81, 6], [6, 79, 2], [8, 76, 2], [10, 79, 2], [12, 81, 4]],
+  [[0, 81, 2], [2, 79, 2], [4, 81, 2], [6, 84, 4], [10, 81, 2], [12, 79, 4]],
+  [[0, 79, 2], [2, 77, 2], [4, 79, 2], [6, 83, 4], [10, 79, 2], [12, 74, 4]],
+  [[0, 80, 2], [2, 83, 2], [4, 86, 4], [8, 83, 2], [10, 80, 2], [12, 76, 4]],
+  [[0, 81, 8], [8, 76, 2], [10, 81, 2], [12, 84, 4]]
+];
+const LEAD_BRIDGE = [[[0, 76, 8], [8, 79, 8]], [[0, 81, 16]], [[0, 79, 8], [8, 76, 8]], [[0, 71, 8], [8, 74, 4], [12, 76, 4]]];
+
+// 섹션: 코드 진행 + 편성. kick: four/half/none, hats: 16/8/none, bass: pulse/funk/long/none, arp: 0~1, lead: 멜로디, riser: 마지막 마디 상승음
+const BGM_SONG = [
+  { name: "intro", chords: ["Am7", "Fmaj7", "Am7", "Fmaj7"], kick: "none", hats: "none", bass: "long", arp: 0.9, pad: true, sweep: true, riser: true },
+  { name: "verse", chords: ["Am7", "Fmaj7", "C", "G", "Am7", "Fmaj7", "C", "G"], kick: "half", hats: "8", bass: "pulse", arp: 0, keys: true, lead: LEAD_VERSE },
+  { name: "pre", chords: ["Dm7", "Em7", "Fmaj7", "Gsus"], kick: "four", hats: "8", bass: "pulse", arp: 0.6, pad: true, lead: LEAD_PRE, riser: true, fill: true },
+  { name: "chorus", chords: ["F", "G", "Em", "Am7", "F", "G", "E7", "Am7"], kick: "four", hats: "16", bass: "pulse", arp: 0.5, pad: true, clap: true, crash: true, lead: LEAD_CHORUS, fill: true },
+  { name: "post", chords: ["F", "G", "Em", "Am7"], kick: "four", hats: "16", bass: "funk", arp: 1, arpLead: true, pad: true, clap: true },
+  { name: "verse2", chords: ["Am7", "Fmaj7", "C", "G", "Am7", "Fmaj7", "C", "G"], kick: "four", hats: "8", bass: "funk", arp: 0.35, keys: true, lead: LEAD_VERSE },
+  { name: "pre", chords: ["Dm7", "Em7", "Fmaj7", "Gsus"], kick: "four", hats: "16", bass: "pulse", arp: 0.7, pad: true, lead: LEAD_PRE, riser: true, fill: true },
+  { name: "chorus", chords: ["F", "G", "Em", "Am7", "F", "G", "E7", "Am7"], kick: "four", hats: "16", bass: "pulse", arp: 0.6, pad: true, clap: true, crash: true, lead: LEAD_CHORUS },
+  { name: "bridge", chords: ["Fmaj7", "Fmaj7", "Em7", "Em7"], kick: "none", hats: "none", bass: "long", arp: 0.4, pad: true, keys: true, lead: LEAD_BRIDGE, riser: true, fill: true },
+  { name: "final", chords: ["F", "G", "Em", "Am7", "F", "G", "E7", "Am7"], kick: "four", hats: "16", bass: "funk", arp: 0.8, pad: true, clap: true, crash: true, lead: LEAD_CHORUS, harmony: true, transpose: 2 },
+  { name: "outro", chords: ["Am7", "Fmaj7", "Am7", "Am7"], kick: "half", hats: "8", bass: "long", arp: 0.7, pad: true, keys: true, sweepOut: true }
+];
+
+// 곡을 마디 단위 타임라인으로 펼친다(로드 시 1회). O(마디 수)
+const BGM_TIMELINE = BGM_SONG.flatMap(section => section.chords.map((chordName, barInSection) => ({
+  section, barInSection, isLastBar: barInSection === section.chords.length - 1, chord: BGM_CHORDS[chordName], lead: section.lead?.[barInSection % section.lead.length] || []
+})));
+
+/* ---------- 추가 악기 ---------- */
+// 리드 신스: 톱니+사각파, 살짝 비브라토, 에코. 코러스·벌스 멜로디 담당.
+function playBgmLead(context, midi, time, duration, velocity = 1) {
+  const filter = context.createBiquadFilter();
+  filter.type = "lowpass";
+  filter.frequency.setValueAtTime(3800, time);
+  filter.frequency.exponentialRampToValueAtTime(1800, time + duration + 0.1);
+  const envelope = bgmEnvelope(context, time, { attack: 0.012, hold: duration * 0.75, release: 0.22, peak: 0.032 * velocity });
+  filter.connect(envelope.gain);
+  envelope.gain.connect(bgm.bus);
+  envelope.gain.connect(bgm.echoInput);
+  const vibrato = context.createOscillator();
+  const vibratoDepth = context.createGain();
+  vibrato.frequency.value = 5.5;
+  vibratoDepth.gain.value = duration > 0.4 ? 9 : 0;
+  vibrato.connect(vibratoDepth);
+  [["sawtooth", -6], ["square", 6]].forEach(([type, detune]) => {
+    const oscillator = context.createOscillator();
+    oscillator.type = type;
+    oscillator.detune.value = detune;
+    oscillator.frequency.value = midiToHz(midi);
+    vibratoDepth.connect(oscillator.detune);
+    oscillator.connect(filter);
+    oscillator.start(time);
+    oscillator.stop(envelope.endTime);
+  });
+  vibrato.start(time);
+  vibrato.stop(envelope.endTime);
 }
 
-// 멜로디는 계단식으로 움직인다(한두 칸씩) → 무작위인데도 노래처럼 들림.
-function nextMelodyNote() {
-  const move = [-2, -1, -1, 1, 1, 2][Math.floor(Math.random() * 6)];
-  bgm.melodyIndex = clamp(bgm.melodyIndex + move, 0, BGM_MELODY_SCALE.length - 1);
-  return BGM_MELODY_SCALE[bgm.melodyIndex];
+// 다음 섹션 직전 '쉬이익' 올라가는 잡음 + 섹션 첫 박 심벌.
+function playBgmRiser(context, time, duration) {
+  const source = context.createBufferSource();
+  source.buffer = getNoiseBuffer(context);
+  source.loop = true;
+  const filter = context.createBiquadFilter();
+  filter.type = "bandpass";
+  filter.Q.value = 2;
+  filter.frequency.setValueAtTime(400, time);
+  filter.frequency.exponentialRampToValueAtTime(7000, time + duration);
+  const gain = context.createGain();
+  gain.gain.setValueAtTime(0.0001, time);
+  gain.gain.exponentialRampToValueAtTime(0.05, time + duration * 0.95);
+  gain.gain.exponentialRampToValueAtTime(0.0001, time + duration + 0.05);
+  source.connect(filter).connect(gain).connect(bgm.bus);
+  source.start(time);
+  source.stop(time + duration + 0.1);
 }
+const playBgmCrash = (context, time) => playBgmNoise(context, time, { filterType: "highpass", frequency: 4500, peak: 0.05, release: 1.4 });
 
-function scheduleBgmStep(context, time, mood) {
+/* ---------- 마디·박 단위 연주 ---------- */
+function scheduleBgmStep(context, time) {
   const step = bgm.step % 16;
-  const section = BGM_SECTIONS[Math.floor(bgm.bar / 8) % BGM_SECTIONS.length];
-  const chordIndex = bgm.bar % 4;
-  const chord = section.chords[chordIndex];
-  const root = section.bass[chordIndex];
-  const sixteenth = 60 / mood.bpm / 4;
-  const isBreakdown = bgm.bar % 8 === 7;      // 8마디마다 한 마디 쉬어 가며 긴장 → 다음 마디에서 터짐
-  const isBuildUp = bgm.bar % 8 === 6;
+  const loopIndex = Math.floor(bgm.bar / BGM_TIMELINE.length);
+  const bar = BGM_TIMELINE[bgm.bar % BGM_TIMELINE.length];
+  const { section } = bar;
+  const transpose = BGM_LOOP_TRANSPOSE[loopIndex % BGM_LOOP_TRANSPOSE.length] + (section.transpose || 0);
+  const [chordNotes, chordRoot] = bar.chord;
+  const chord = chordNotes.map(note => note + transpose);
+  const root = chordRoot + transpose;
+  const sixteenth = 60 / BGM_BPM / 4;
+  const barDuration = sixteenth * 16;
+  const sectionProgress = (bar.barInSection + step / 16) / section.chords.length;
+
   if (step === 0) {
-    playBgmPad(context, chord, time, sixteenth * 16, mood);
-    bgm.warmth.frequency.setTargetAtTime(isBreakdown ? 1500 : 7500, time, isBreakdown ? 0.15 : 0.4);
+    if (section.pad) playBgmPad(context, chord, time, barDuration, { padCutoff: section.name === "bridge" ? 1400 : 2600 });
+    if (section.crash && bar.barInSection === 0) playBgmCrash(context, time);
+    if (section.riser && bar.isLastBar) playBgmRiser(context, time, barDuration);
+    const cutoff = section.sweep ? 900 + 6600 * sectionProgress : section.sweepOut ? 7500 - 6000 * sectionProgress : 7500;
+    bgm.warmth.frequency.setTargetAtTime(cutoff, time, 0.3);
   }
-  // 베이스: 8분음표로 루트-루트-옥타브 패턴, 브레이크다운엔 첫 박만
-  if (step % 2 === 0 && (!isBreakdown || step === 0)) {
-    const octaveUp = step === 6 || step === 14;
-    playBgmSynthBass(context, root + (octaveUp ? 12 : 0), time, sixteenth * 1.8, step % 4 === 0 ? 1 : 0.75);
-  }
-  // 아르페지오: 코드 음을 위아래로(16분), 브레이크다운에서도 계속 → 비어 보이지 않게
-  if (Math.random() < mood.arp) {
+  // 베이스
+  if (section.bass === "long" && step === 0) playBgmBass(context, root, time, barDuration * 0.8);
+  if (section.bass === "pulse" && step % 2 === 0) playBgmSynthBass(context, root + (step === 6 || step === 14 ? 12 : 0), time, sixteenth * 1.8, step % 4 === 0 ? 1 : 0.75);
+  if (section.bass === "funk" && [0, 3, 6, 8, 10, 11, 14].includes(step)) playBgmSynthBass(context, root + ([3, 11].includes(step) ? 12 : step === 14 ? 7 : 0), time, sixteenth * 1.4, [0, 8].includes(step) ? 1 : 0.7);
+  // 화음·아르페지오
+  if (section.keys && (step === 0 || step === 6 || step === 10)) playBgmKeys(context, chord.slice(1), time, step === 0 ? 0.9 : 0.6);
+  if (section.arp && (section.arpLead || Math.random() < section.arp)) {
     const arpNotes = [...chord, chord[1] + 12, chord[2] + 12];
-    const pattern = [0, 1, 2, 3, 4, 3, 2, 1, 0, 2, 1, 3, 2, 4, 3, 5];
-    playBgmArp(context, arpNotes[pattern[step] % arpNotes.length] + 12, time, step % 4 === 0 ? 1 : 0.65);
+    const pattern = section.arpLead ? [0, 2, 4, 5, 4, 2, 3, 1, 0, 3, 5, 4, 2, 4, 1, 3] : [0, 1, 2, 3, 4, 3, 2, 1, 0, 2, 1, 3, 2, 4, 3, 5];
+    playBgmArp(context, arpNotes[pattern[step] % arpNotes.length] + 12, time, (section.arpLead ? 1.5 : 1) * (step % 4 === 0 ? 1 : 0.65));
   }
-  if (step === 0 || step === 10) playBgmKeys(context, chord.slice(1), time, step === 0 ? 0.8 : 0.55);
-  if (!isBreakdown) {
-    if (step % 4 === 0) { playBgmKick(context, time, 1); duckPad(context, time); }       // 포온더플로어
-    if (step === 4 || step === 12) { playBgmSnare(context, time, 1); playBgmClap(context, time); }
-    if (step % 4 === 2) playBgmOpenHat(context, time);
-    else if (Math.random() < mood.drums) playBgmHat(context, time, step % 2 === 0 ? 0.9 : 0.55);
-    if (isBuildUp && step >= 12) playBgmSnare(context, time, 0.6 + (step - 12) * 0.1);   // 다음 마디로 넘어가는 필인
-  }
-  if (step % 2 === 0 && Math.random() < mood.melody * (isBreakdown ? 1.4 : 1)) playBgmMelody(context, nextMelodyNote(), time, sixteenth * (Math.random() < 0.6 ? 2 : 4));
+  // 드럼
+  const isFillBar = section.fill && bar.isLastBar;
+  if (section.kick === "four" && step % 4 === 0 && !(isFillBar && step >= 12)) { playBgmKick(context, time, 1); duckPad(context, time); }
+  if (section.kick === "half" && (step === 0 || step === 8 || (step === 10 && Math.random() < 0.5))) { playBgmKick(context, time, 0.9); duckPad(context, time); }
+  if (section.kick !== "none" && (step === 4 || step === 12)) { playBgmSnare(context, time, 0.9); if (section.clap) playBgmClap(context, time); }
+  if (section.hats === "8" && step % 2 === 0) playBgmHat(context, time, step % 4 === 2 ? 1 : 0.6);
+  if (section.hats === "16") { if (step % 4 === 2) playBgmOpenHat(context, time); else playBgmHat(context, time, step % 2 === 0 ? 0.9 : 0.5); }
+  if (isFillBar && step >= 8 && (step % 2 === 0 || step >= 12)) playBgmSnare(context, time, 0.45 + (step - 8) * 0.07);
+  // 멜로디
+  bar.lead.filter(note => note[0] === step).forEach(([, midi, length]) => {
+    playBgmLead(context, midi + transpose, time, sixteenth * length);
+    if (section.harmony) playBgmLead(context, midi + transpose - (length >= 4 ? 5 : 3), time, sixteenth * length, 0.5);
+  });
 }
 
 function bgmTick() {
   const context = audioContext;
   if (!context || !bgm.playing) return;
   if (context.state !== "running" || document.hidden) { bgm.nextStepTime = context.currentTime + 0.05; return; }
-  const mood = bgmMood();
-  const sixteenth = 60 / mood.bpm / 4;
+  const sixteenth = 60 / BGM_BPM / 4;
   if (bgm.nextStepTime < context.currentTime - 0.2) bgm.nextStepTime = context.currentTime + 0.05; // 오래 멈췄다 돌아오면 밀린 음을 몰아 치지 않음
   while (bgm.nextStepTime < context.currentTime + BGM_LOOKAHEAD_SECONDS) {
     const swingDelay = bgm.step % 2 === 1 ? sixteenth * BGM_SWING : 0;
-    try { scheduleBgmStep(context, bgm.nextStepTime + swingDelay, mood); } catch (error) { /* 한 음 실패는 무시 */ }
+    try { scheduleBgmStep(context, bgm.nextStepTime + swingDelay); } catch (error) { /* 한 음 실패는 무시 */ }
     bgm.nextStepTime += sixteenth;
     bgm.step += 1;
     if (bgm.step % 16 === 0) bgm.bar += 1;
@@ -307,5 +394,5 @@ function toggleBgm() {
   saveState();
   renderBgmPill();
   if (state.bgm) startBgm(); else stopBgm();
-  showToast(state.bgm ? "BGM을 켰어요 · 코드로 즉석 연주하는 신스웨이브 루프" : "BGM을 껐어요");
+  showToast(state.bgm ? "🎵 BGM ON · 'Overclock' (2분 22초, 직접 작곡)" : "BGM을 껐어요");
 }
