@@ -205,10 +205,10 @@ function bgmMood() {
   const isNight = hour >= 21 || hour < 6;
   const isBusy = typeof isDiscussionActive === "function" && isDiscussionActive();
   return {
-    bpm: (isNight ? 96 : 106) + (isBusy ? 6 : 0),
+    bpm: (isNight ? 100 : 106) + (isBusy ? 6 : 0),
     padCutoff: isNight ? 1600 : 2600,
     drums: isBusy ? 1 : isNight ? 0.75 : 0.9,
-    arp: isNight ? 0.55 : 0.85,
+    arp: isNight ? 0.7 : 0.85,
     melody: isBusy ? 0.5 : isNight ? 0.3 : 0.4
   };
 }
