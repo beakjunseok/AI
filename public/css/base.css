@@ -81,3 +81,31 @@ nav#tabs::-webkit-scrollbar{display:none}
 
 main{display:grid;grid-template-columns:1fr;gap:14px;padding:0 12px 28px}
 @media (min-width:1180px){ main{grid-template-columns:250px 1fr;align-items:start} }
+
+/* ---------- 키보드 뽑기 ---------- */
+#gachaPill.ready{color:var(--warn);box-shadow:inset 0 0 0 1px var(--warn),0 0 10px rgba(255,182,72,.35);animation:gachaReady 1.6s ease-in-out infinite}
+@keyframes gachaReady{50%{box-shadow:inset 0 0 0 1px var(--warn),0 0 16px rgba(255,182,72,.7)}}
+.gachaCard{width:min(560px,94vw);max-height:88vh;overflow:auto}
+.gachaStage{display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:10px;padding:16px 10px;min-height:120px;justify-content:center;background:#06080b;box-shadow:inset 0 0 0 1px var(--line);text-align:center}
+.gachaStage small{color:var(--sub);font:12px var(--mono)}
+.gachaBox{font-size:40px}
+.gachaStage.rolling .gachaBox{animation:gachaShake .12s linear infinite}
+@keyframes gachaShake{0%{transform:rotate(-8deg) scale(1.05)}50%{transform:rotate(8deg) scale(1.15)}100%{transform:rotate(-8deg) scale(1.05)}}
+.gachaStage.reveal{box-shadow:inset 0 0 0 1px var(--rarity),inset 0 0 40px -12px var(--rarity);animation:gachaPop .5s cubic-bezier(.3,1.6,.5,1)}
+@keyframes gachaPop{0%{transform:scale(.7);opacity:0}100%{transform:none;opacity:1}}
+.gachaRarity{font:700 13px var(--tech);letter-spacing:.2em;color:var(--rarity);text-shadow:0 0 8px var(--rarity)}
+.gachaStage.reveal .kbPreview{height:54px}
+.gachaStage.reveal .kbPreview .keyboard{scale:3}
+.gachaPull{width:100%;margin-top:10px}
+.gachaOdds,.gachaNote{display:block;margin-top:6px;color:var(--sub);font:11px/1.5 var(--mono)}
+.skinGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:6px;margin-top:12px}
+.skinCell{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 4px;border:0;background:#0a0c10;box-shadow:inset 0 0 0 1px var(--line),inset 0 -2px 0 var(--rarity);cursor:pointer;color:var(--ink)}
+.skinCell small{font:10px var(--mono);color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.skinCell.locked{opacity:.45}
+.skinCell.locked .kbPreview{font:700 16px var(--mono);color:var(--rarity)}
+.skinCell.selected{box-shadow:inset 0 0 0 1px var(--rarity),0 0 10px -2px var(--rarity)}
+.kbPreview{height:34px;width:100%;display:grid;place-items:center}
+.kbPreview .keyboard{position:relative;left:auto;bottom:auto;transform:perspective(40px) rotateX(28deg);scale:1.9}
+.skinDetail{margin-top:10px;padding:8px 10px;background:#06080b;box-shadow:inset 0 0 0 1px var(--cyanDim);display:flex;flex-direction:column;gap:4px}
+.skinDetail small{color:var(--sub);font:12px var(--mono)}
+.equipRow{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}

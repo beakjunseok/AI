@@ -170,3 +170,44 @@ header h1{cursor:pointer}
 .pod .podSeat1{right:4%;bottom:34px}
 .pod .podSeat2{left:calc(50% - var(--agentW) / 2);bottom:42px;z-index:1}
 .pod.dropHover,.pod:hover::after{box-shadow:inset 0 0 0 1px #ff5ac8,0 0 12px rgba(255,90,200,.35)}
+
+/* ---------- 키보드 스킨 (keyboards.js가 CSS 변수로 값을 넣는다) ---------- */
+.keyboard.skin{width:var(--kw);height:var(--kh);border-radius:2px;background:var(--case);background-size:100% 100%;
+  box-shadow:0 1px 0 #0b0e12,inset 0 0 0 1px var(--edge),0 0 var(--glowSize) var(--glow)}
+/* 키는 ::before에 그려서 케이스 배경을 따로 움직일 수 있게 한다 */
+.keyboard.skin::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  background:linear-gradient(var(--ac),var(--ac)) 2px 1.5px/3px 2px no-repeat,
+    repeating-linear-gradient(90deg,var(--k1) 0 3px,transparent 3px 4.5px) 2px 1.5px/var(--rowW,calc(100% - 4px)) 2px no-repeat,
+    repeating-linear-gradient(90deg,var(--k2) 0 3px,transparent 3px 4.5px) 3px 4.5px/var(--rowW2,calc(100% - 6px)) 2px no-repeat}
+.keyboard.skin.lay-full{--rowW:calc(100% - 16px);--rowW2:calc(100% - 18px)}
+.keyboard.skin.lay-full::before{background:linear-gradient(var(--ac),var(--ac)) 2px 1.5px/3px 2px no-repeat,
+    repeating-linear-gradient(90deg,var(--k2) 0 2.5px,transparent 2.5px 4px) calc(100% - 2px) 1.5px/10px 2px no-repeat,
+    repeating-linear-gradient(90deg,var(--k2) 0 2.5px,transparent 2.5px 4px) calc(100% - 2px) 4.5px/10px 2px no-repeat,
+    repeating-linear-gradient(90deg,var(--k1) 0 3px,transparent 3px 4.5px) 2px 1.5px/var(--rowW) 2px no-repeat,
+    repeating-linear-gradient(90deg,var(--k2) 0 3px,transparent 3px 4.5px) 3px 4.5px/var(--rowW2) 2px no-repeat}
+.keyboard.skin.lay-split{-webkit-mask-image:linear-gradient(90deg,#000 0 45%,transparent 45% 55%,#000 55%);mask-image:linear-gradient(90deg,#000 0 45%,transparent 45% 55%,#000 55%)}
+.keyboard.skin.keys-round::before{background:radial-gradient(circle,var(--k1) 0 1.2px,transparent 1.5px) 1px .5px/4.5px 3.5px,radial-gradient(circle,var(--k2) 0 1.2px,transparent 1.5px) 3.2px 3.6px/4.5px 3.5px}
+.keyboard.skin.keys-ortho::before{background:linear-gradient(var(--ac),var(--ac)) 2px 1.5px/2.5px 2px no-repeat,
+    repeating-linear-gradient(90deg,var(--k1) 0 2.5px,transparent 2.5px 3.5px) 2px 1.5px/calc(100% - 4px) 2px no-repeat,
+    repeating-linear-gradient(90deg,var(--k2) 0 2.5px,transparent 2.5px 3.5px) 2px 4.5px/calc(100% - 4px) 2px no-repeat}
+.keyboard.skin.keys-piano{height:10px}
+.keyboard.skin.keys-piano::before{inset:1px 2px 2px;background:repeating-linear-gradient(90deg,var(--k2) 0 2px,transparent 2px 4.5px,var(--k2) 4.5px 6.5px,transparent 6.5px 13.5px) 2px 0/calc(100% - 4px) 4px no-repeat,repeating-linear-gradient(90deg,var(--k1) 0 4px,#9aa0a6 4px 4.5px)}
+/* 효과 */
+.keyboard.skin.fx-flow{background-size:200% 100%;animation:kbFlow 3s linear infinite}
+.keyboard.skin.fx-breathe{animation:kbBreathe 2.4s ease-in-out infinite}
+.keyboard.skin.fx-flash{animation:kbFlash 5s steps(1) infinite}
+.keyboard.skin.fx-flicker{background-size:200% 100%;animation:kbFlow 4s linear infinite,kbFlicker 1.3s ease-in-out infinite}
+.keyboard.skin.fx-twinkle{animation:kbTwinkle 2.2s ease-in-out infinite,kbFloat 3s ease-in-out infinite}
+.keyboard.skin.fx-sparkle{background-size:200% 100%;animation:kbFlow 2.2s linear infinite,kbBreathe 1.6s ease-in-out infinite}
+.keyboard.skin.fx-glitch{animation:kbGlitch 2.4s steps(1) infinite}
+.keyboard.skin.fx-flow.fx-float{animation:kbFlow 3s linear infinite,kbFloat 3s ease-in-out infinite}
+.keyboard.skin.fx-flow.fx-float.fx-hue{animation:kbFlow 3s linear infinite,kbFloat 3s ease-in-out infinite,kbHue 6s linear infinite}
+@keyframes kbFlow{to{background-position:200% 0}}
+@keyframes kbBreathe{50%{box-shadow:0 1px 0 #0b0e12,inset 0 0 0 1px var(--edge),0 0 14px 1px var(--glow)}}
+@keyframes kbFlash{0%,100%{filter:none}46%{filter:brightness(2.2)}48%{filter:none}50%{filter:brightness(1.8)}52%{filter:none}}
+@keyframes kbFlicker{50%{box-shadow:0 1px 0 #0b0e12,inset 0 0 0 1px var(--edge),0 0 16px 2px var(--glow);filter:brightness(1.25)}}
+@keyframes kbTwinkle{50%{filter:brightness(1.5)}}
+@keyframes kbFloat{50%{translate:0 -3px}}
+@keyframes kbHue{to{filter:hue-rotate(360deg)}}
+@keyframes kbGlitch{0%,100%{translate:0 0;filter:none}20%{translate:-2px 0;filter:hue-rotate(90deg)}22%{translate:2px 1px}24%{translate:0 0;filter:none}60%{translate:1px -1px;filter:invert(1)}62%{translate:0 0;filter:none}80%{clip-path:inset(0 0 55% 0)}82%{clip-path:none}}
+@media (prefers-reduced-motion:reduce){.keyboard.skin{animation:none!important}}

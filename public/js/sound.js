@@ -189,6 +189,9 @@ const SOUND_RECIPES = {
   taskAdd: context => playTone(context, { frequency: 700, endFrequency: 1050, type: "triangle", duration: 0.08, volume: 0.18 }),
   round: context => { playNoise(context, { duration: 0.12, volume: 0.07, filterType: "highpass", frequency: 2500 }); playTone(context, { frequency: NOTE.D6, startOffset: 0.08, duration: 0.18, volume: 0.12 }); },
   glitch: context => [0, 0.03, 0.07].forEach(startOffset => playTone(context, { frequency: 200 + Math.random() * 2400, type: "square", startOffset, duration: 0.02, volume: 0.025 })),
+  gachaRoll: context => { for (let index = 0; index < 10; index += 1) playTone(context, { frequency: 300 + index * 90, type: "square", startOffset: index * 0.1, duration: 0.06, volume: 0.07 }); },
+  gachaReveal: context => playNotes(context, [[NOTE.C6, 0, 0.1], [NOTE.E6, 0.09, 0.1], [NOTE.G6, 0.18, 0.3]], { volume: 0.2 }),
+  gachaLegend: context => { playNotes(context, [[NOTE.C6, 0, 0.12], [NOTE.E6, 0.1, 0.12], [NOTE.G6, 0.2, 0.12], [NOTE.C7, 0.3, 0.16], [NOTE.G6, 0.44, 0.1], [NOTE.C7, 0.54, 0.7]], { volume: 0.22 }); playNoise(context, { duration: 0.9, volume: 0.06, filterType: "highpass", frequency: 5000 }); },
   yawn: context => playTone(context, { frequency: 520, endFrequency: 280, duration: 0.6, volume: 0.12, attack: 0.08 }),
   wake: context => playTone(context, { frequency: 300, endFrequency: 760, duration: 0.22, volume: 0.16 })
 };

@@ -169,7 +169,7 @@ function createDeskSlot(slotIndex, occupant) {
   chair.style.background = preset.palette.chair;
   slot.append(chair, el("div", { class: "seat" }, createAgentNode(occupant.id)));
   // 앉은 팀원 바로 앞 작은 키보드(팀원마다 다른 모델). 일하는 중(.slot.working)이면 키가 깜빡이며 눌린다.
-  desk.append(el("div", { class: `keyboard kb-${occupant.id}`, "aria-hidden": "true" }));
+  desk.append(createKeyboardNode(equippedSkinOf(occupant.id), occupant.id));
   desk.append(el("div", { class: "deskItems" }, preset.items.map(item =>
     el("span", { class: "item", text: item.icon, title: item.name, onclick: event => { event.stopPropagation(); openZoom(preset, item); } }))));
   desk.append(el("div", { class: "deskBars" },

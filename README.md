@@ -17,6 +17,7 @@ public/            정적 페이지 (빌드 도구 없음)
     characters.js  SVG 캐릭터 + 포즈 애니메이션(idle/walk/type/sleep/flail)
     sound.js       효과음 38종 + 팀원별 말소리(Web Audio 합성, 음원 파일 없음)
     bgm.js         직접 작곡한 2분 22초 신스팝 BGM "Overclock"을 실시간 연주(11개 섹션, 루프마다 전조)
+    keyboards.js   키보드 스킨 50종(일반~전설) + 하루 한 번 뽑기·도감·장착
     render.js      헤더·탭·사무실·휴게실 렌더링
     motion.js      휴게실 산책·복도 심부름 등 자동 움직임
     gestures.js    탭·드래그·던지기, 상호작용

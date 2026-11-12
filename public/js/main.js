@@ -4,6 +4,9 @@ function bindStaticEvents() {
   document.getElementById("scrim").addEventListener("click", closePanel);
   document.getElementById("zoom").addEventListener("click", () => document.getElementById("zoom").classList.remove("show"));
   document.getElementById("trophyPill").addEventListener("click", openAchievements);
+  document.getElementById("gachaPill").addEventListener("click", () => openGacha());
+  renderGachaPill();
+  setInterval(renderGachaPill, 60000);
   document.getElementById("roleMapPill").addEventListener("click", openRoleMap);
   document.getElementById("roomPill").addEventListener("click", openRoom);
   document.getElementById("briefPill").addEventListener("click", openBriefList);

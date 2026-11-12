@@ -40,6 +40,15 @@ function main() {
     const problem = checkSyntax(file);
     if (problem) problems.push(problem);
   }
+  // 브라우저 스크립트는 전역 스코프를 공유한다: 다른 파일과 같은 이름의 const/let이 있으면 뒤 파일 전체가 로드 실패.
+  const declaredIn = new Map();
+  for (const asset of findReferencedAssets(html).filter(name => name.endsWith(".js"))) {
+    const source = fs.readFileSync(path.join(PUBLIC_DIR, asset), "utf8");
+    for (const match of source.matchAll(/^(?:const|let|class)\s+([A-Za-z_$][\w$]*)/gm)) {
+      if (declaredIn.has(match[1])) problems.push(`'${match[1]}'이(가) ${declaredIn.get(match[1])}와 ${asset}에 중복 선언됨`);
+      else declaredIn.set(match[1], asset);
+    }
+  }
   if (problems.length) {
     console.error(`검사 실패 ${problems.length}건:\n- ${problems.join("\n- ")}`);
     process.exit(1);
