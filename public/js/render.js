@@ -77,7 +77,24 @@ function normalizeUrl(raw) {
   }
 }
 
+// 두 코드의 줄 단위 차이(추가·삭제 줄 수). 줄 내용을 개수로 세어 비교하는 근사치. O(줄 수)
+function countLineChanges(previousCode, nextCode) {
+  const counts = new Map();
+  const toLines = code => (code ? String(code).split("\n") : []);
+  toLines(previousCode).forEach(line => counts.set(line, (counts.get(line) || 0) + 1));
+  let added = 0;
+  toLines(nextCode).forEach(line => {
+    const left = counts.get(line) || 0;
+    if (left > 0) counts.set(line, left - 1); else added += 1;
+  });
+  const removed = [...counts.values()].reduce((sum, value) => sum + value, 0);
+  return { added, removed };
+}
+
+const formatHistoryTime = time => new Date(time).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false });
+
 // 프로젝트 코드 칸: 아두이노·IoT 프로젝트의 현재 코드를 붙여 두면 AI가 참고하고, 브리프 '초기 코드'도 이어서 쓴다.
+// 저장할 때 내용이 바뀌었으면 시간·줄 수·변경량과 함께 버전 기록을 남긴다(불러오기·복사 가능).
 function openCodeEditor(projectId) {
   const project = findProject(projectId);
   if (!project) return;
@@ -97,15 +114,29 @@ function openCodeEditor(projectId) {
   });
   updateCounter();
   const save = () => {
-    project.code = textarea.value.slice(0, PROJECT_CODE_MAX_LENGTH);
+    const nextCode = textarea.value.slice(0, PROJECT_CODE_MAX_LENGTH);
+    if (nextCode !== (project.code || "")) {
+      const { added, removed } = countLineChanges(project.code, nextCode);
+      project.codeHistory = [{ time: Date.now(), code: nextCode, lines: nextCode.split("\n").length, added, removed }, ...(project.codeHistory || [])].slice(0, PROJECT_CODE_HISTORY_KEEP);
+    }
+    project.code = nextCode;
     saveState();
     zoom.classList.remove("show");
     renderOffice();
     showToast(project.code.trim() ? "💾 코드를 저장했어요. AI 팀원들이 참고해요" : "코드를 비웠어요");
   };
   const copy = () => navigator.clipboard?.writeText(textarea.value).then(() => showToast("코드를 복사했어요"), () => showToast("복사하지 못했어요"));
+  const history = project.codeHistory || [];
+  const historyRows = history.map((version, index) => el("div", { class: "historyRow" + (index === 0 ? " current" : "") },
+    el("span", { class: "historyTime", text: formatHistoryTime(version.time) }),
+    el("span", { class: "historyMeta", text: `${version.lines}줄` }),
+    el("span", { class: "historyDiff" }, el("b", { class: "plus", text: `+${version.added}` }), " ", el("b", { class: "minus", text: `−${version.removed}` })),
+    index === 0 ? el("span", { class: "historyTag", text: "현재" }) : el("button", { class: "btn soft", type: "button", text: "불러오기",
+      onclick: () => { textarea.value = version.code; updateCounter(); showToast(`${formatHistoryTime(version.time)} 버전을 불러왔어요. 저장하면 이 코드가 현재 코드가 돼요`); } })));
+  const historyBox = el("details", { class: "codeHistory" }, el("summary", { text: `🕘 변경 기록 ${history.length}개 (최근 ${PROJECT_CODE_HISTORY_KEEP}개 보관)` }),
+    history.length ? el("div", { class: "historyList" }, historyRows) : el("p", { class: "emptyNote", text: "아직 기록이 없어요. 코드를 저장하면 시간별로 남아요." }));
   zoom.replaceChildren(el("div", { class: "zoomCard chunky codeCard", onclick: event => event.stopPropagation() },
-    el("h3", { text: `💾 ${project.name} · 코드` }), textarea, counter,
+    el("h3", { text: `💾 ${project.name} · 코드` }), textarea, counter, historyBox,
     el("div", { class: "codeActions" },
       el("button", { class: "btn soft", type: "button", text: "복사", onclick: copy }),
       el("button", { class: "btn pink", type: "button", text: "저장", onclick: save }))));

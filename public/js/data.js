@@ -163,3 +163,4 @@ const PROJECT_KINDS = {
 };
 const projectKindOf = project => PROJECT_KINDS[project?.kind] || PROJECT_KINDS.general;
 const PROJECT_CODE_MAX_LENGTH = 20000;
+const PROJECT_CODE_HISTORY_KEEP = 15; // 코드 버전 기록은 프로젝트당 최근 15개(저장 공간 보호)
