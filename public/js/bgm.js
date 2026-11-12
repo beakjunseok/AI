@@ -385,6 +385,15 @@ function stopBgm() {
   setTimeout(() => { try { crackle?.stop(); } catch (error) { /* 이미 멈춤 */ } }, 700);
 }
 
+// 뽑기 연출처럼 효과음이 주인공일 때 BGM을 잠깐 줄였다가 되돌린다.
+function duckBgm(isDucked) {
+  if (!bgm.playing || !bgm.output || !audioContext) return;
+  const now = audioContext.currentTime;
+  bgm.output.gain.cancelScheduledValues(now);
+  bgm.output.gain.setValueAtTime(Math.max(bgm.output.gain.value, 0.0001), now);
+  bgm.output.gain.exponentialRampToValueAtTime(isDucked ? BGM_VOLUME * 0.2 : BGM_VOLUME, now + (isDucked ? 0.3 : 1.2));
+}
+
 function renderBgmPill() {
   document.getElementById("bgmPill").textContent = state.bgm ? "🎵 BGM ON" : "🎵 BGM OFF";
 }

@@ -189,12 +189,73 @@ const SOUND_RECIPES = {
   taskAdd: context => playTone(context, { frequency: 700, endFrequency: 1050, type: "triangle", duration: 0.08, volume: 0.18 }),
   round: context => { playNoise(context, { duration: 0.12, volume: 0.07, filterType: "highpass", frequency: 2500 }); playTone(context, { frequency: NOTE.D6, startOffset: 0.08, duration: 0.18, volume: 0.12 }); },
   glitch: context => [0, 0.03, 0.07].forEach(startOffset => playTone(context, { frequency: 200 + Math.random() * 2400, type: "square", startOffset, duration: 0.02, volume: 0.025 })),
-  gachaRoll: context => { for (let index = 0; index < 10; index += 1) playTone(context, { frequency: 300 + index * 90, type: "square", startOffset: index * 0.1, duration: 0.06, volume: 0.07 }); },
-  gachaReveal: context => playNotes(context, [[NOTE.C6, 0, 0.1], [NOTE.E6, 0.09, 0.1], [NOTE.G6, 0.18, 0.3]], { volume: 0.2 }),
-  gachaLegend: context => { playNotes(context, [[NOTE.C6, 0, 0.12], [NOTE.E6, 0.1, 0.12], [NOTE.G6, 0.2, 0.12], [NOTE.C7, 0.3, 0.16], [NOTE.G6, 0.44, 0.1], [NOTE.C7, 0.54, 0.7]], { volume: 0.22 }); playNoise(context, { duration: 0.9, volume: 0.06, filterType: "highpass", frequency: 5000 }); },
+  // 뽑기 연출: 충전(점점 높아지며 떨림) → 폭발(쿵) → 등급별 팡파르 → 별 → NEW
+  gachaCharge: context => {
+    const startTime = context.currentTime;
+    const endTime = startTime + 1.45;
+    const oscillator = context.createOscillator();
+    oscillator.type = "sawtooth";
+    oscillator.frequency.setValueAtTime(110, startTime);
+    oscillator.frequency.exponentialRampToValueAtTime(880, endTime);
+    const filter = context.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.setValueAtTime(300, startTime);
+    filter.frequency.exponentialRampToValueAtTime(4200, endTime);
+    const gain = context.createGain();
+    gain.gain.setValueAtTime(0.0001, startTime);
+    gain.gain.exponentialRampToValueAtTime(0.07, endTime - 0.1);
+    gain.gain.exponentialRampToValueAtTime(0.0001, endTime + 0.05);
+    const tremolo = context.createOscillator();
+    tremolo.frequency.setValueAtTime(5, startTime);
+    tremolo.frequency.linearRampToValueAtTime(26, endTime);
+    const tremoloDepth = context.createGain();
+    tremoloDepth.gain.value = 0.03;
+    tremolo.connect(tremoloDepth).connect(gain.gain);
+    oscillator.connect(filter).connect(gain).connect(masterGain);
+    [oscillator, tremolo].forEach(node => { node.start(startTime); node.stop(endTime + 0.1); });
+    playNoise(context, { duration: 1.45, volume: 0.07, frequency: 500, endFrequency: 7000, q: 1.5 });
+  },
+  gachaBurst: context => {
+    playTone(context, { frequency: 170, endFrequency: 36, duration: 0.65, volume: 0.55, attack: 0.003 });
+    playNoise(context, { duration: 0.55, volume: 0.32, filterType: "lowpass", frequency: 2200, endFrequency: 180 });
+    playNoise(context, { startOffset: 0.03, duration: 0.9, volume: 0.09, filterType: "highpass", frequency: 6500 });
+  },
+  gachaNew: context => [NOTE.E6, NOTE.G6, NOTE.C7, 2637.02, 3135.96].forEach((frequency, index) => playTone(context, { frequency, type: "triangle", startOffset: index * 0.045, duration: 0.2, volume: 0.11 })),
+  gachaFanfare_common: context => playNotes(context, [[NOTE.G5, 0, 0.12], [NOTE.C6, 0.1, 0.35]], { volume: 0.2 }),
+  gachaFanfare_uncommon: context => playNotes(context, [[NOTE.C6, 0, 0.1], [NOTE.E6, 0.09, 0.1], [NOTE.G6, 0.18, 0.4]], { volume: 0.2 }),
+  gachaFanfare_rare: context => {
+    playNotes(context, [[NOTE.C6, 0, 0.1], [NOTE.E6, 0.08, 0.1], [NOTE.G6, 0.16, 0.1], [NOTE.C7, 0.24, 0.55]], { volume: 0.2 });
+    playNotes(context, [[NOTE.C6, 0.24, 0.8], [NOTE.E6, 0.24, 0.8], [NOTE.G6, 0.24, 0.8]], { type: "sine", volume: 0.07 });
+  },
+  gachaFanfare_epic: context => {
+    [NOTE.C5, NOTE.E5, NOTE.G5, NOTE.C6, NOTE.E6, NOTE.G6, NOTE.C7].forEach((frequency, index) => playTone(context, { frequency, type: "triangle", startOffset: index * 0.06, duration: 0.14, volume: 0.15 }));
+    playNotes(context, [[NOTE.A5, 0.45, 1.1], [NOTE.C6, 0.45, 1.1], [NOTE.E6, 0.45, 1.1], [NOTE.A6, 0.45, 1.1]], { type: "sine", volume: 0.07 });
+    playNoise(context, { startOffset: 0.4, duration: 1.2, volume: 0.06, filterType: "highpass", frequency: 7000 });
+  },
+  gachaFanfare_legend: context => {
+    const brass = [[NOTE.G5, 0, 0.14], [NOTE.C6, 0.15, 0.14], [NOTE.E6, 0.3, 0.14], [NOTE.G6, 0.45, 0.42], [NOTE.E6, 0.9, 0.12], [NOTE.G6, 1.03, 0.12], [NOTE.C7, 1.16, 1.1]];
+    brass.forEach(([frequency, startOffset, duration]) => {
+      playTone(context, { frequency, type: "sawtooth", startOffset, duration, volume: 0.07, attack: 0.02 });
+      playTone(context, { frequency: frequency / 2, type: "square", startOffset, duration, volume: 0.04, attack: 0.02 });
+    });
+    [NOTE.C5, NOTE.E5, NOTE.G5, NOTE.C6].forEach(frequency => playTone(context, { frequency, type: "sawtooth", startOffset: 1.16, duration: 1.6, volume: 0.03, attack: 0.25 }));
+    playTone(context, { frequency: 90, endFrequency: 45, startOffset: 1.16, duration: 0.9, volume: 0.35 });
+    playNoise(context, { startOffset: 1.16, duration: 1.8, volume: 0.1, filterType: "highpass", frequency: 5500 });
+  },
   yawn: context => playTone(context, { frequency: 520, endFrequency: 280, duration: 0.6, volume: 0.12, attack: 0.08 }),
   wake: context => playTone(context, { frequency: 300, endFrequency: 760, duration: 0.22, volume: 0.16 })
 };
+
+// 등급 예고음(올라갈수록 높게)과 별 소리를 단계별로 만든다.
+[659.25, 783.99, 987.77, 1174.66, 1567.98].forEach((frequency, index) => {
+  SOUND_RECIPES[`gachaTease${index}`] = context => playTone(context, { frequency, endFrequency: frequency * 1.5, type: "square", duration: 0.12, volume: 0.06 });
+  const starNote = [NOTE.C6, NOTE.D6, NOTE.E6, NOTE.G6, NOTE.C7][index];
+  SOUND_RECIPES[`gachaStar${index}`] = context => {
+    playTone(context, { frequency: starNote, type: "triangle", duration: 0.3, volume: 0.16 });
+    playTone(context, { frequency: starNote * 2, type: "sine", startOffset: 0.02, duration: 0.25, volume: 0.06 });
+    playNoise(context, { duration: 0.12, volume: 0.04, filterType: "highpass", frequency: 8000 });
+  };
+});
 
 // 팀원별 말소리: 말풍선이 뜰 때 캐릭터 목소리 높이로 '삐빗' 하고 웅얼거린다(동물의 숲 느낌). 글자 수에 비례해 2~5음.
 const VOICE_PROFILES = {
@@ -209,7 +270,7 @@ const voiceLastAt = {};
 
 function playVoice(agentId, text) {
   const profile = VOICE_PROFILES[agentId];
-  if (!profile || !state.sound || document.hidden || !audioContext || audioContext.state !== "running") return;
+  if (!profile || !state.sound || document.hidden || !audioContext || audioContext.state !== "running" || document.getElementById("gachaFx")) return;
   const now = performance.now();
   if (now - (voiceLastAt[agentId] || 0) < VOICE_MIN_GAP_MS) return;
   voiceLastAt[agentId] = now;
@@ -226,6 +287,8 @@ function playVoice(agentId, text) {
 function playSound(name) {
   const recipe = SOUND_RECIPES[name];
   if (!recipe || !state.sound || document.hidden || !audioContext) return;
+  // 뽑기 연출 중에는 사무실 잡음(발소리·타건음 등)을 끄고 연출 소리만 들리게.
+  if (document.getElementById("gachaFx") && !/^(gacha|coin|ui)/.test(name)) return;
   const now = performance.now();
   const minimumGap = SOUND_MIN_GAP_MS[name] ?? SOUND_MIN_GAP_MS.default;
   if (now - (soundLastPlayedAt[name] || 0) < minimumGap) return;

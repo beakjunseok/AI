@@ -150,59 +150,179 @@ function timeUntilMidnight() {
 }
 
 const skinPreview = (skin, agentId) => el("div", { class: "kbPreview" }, createKeyboardNode(skin, agentId));
+const rarityStarCount = rarityKey => RARITY_ORDER.indexOf(rarityKey) + 1;
 
-// 뽑기 창: 오늘의 뽑기 버튼 → 결과 연출, 아래에 도감(등급순)과 장착.
-function openGacha(selectedSkinId = null, lastResult = null) {
+/* ---------- 뽑기 화면 ---------- */
+// 오늘의 뽑기 버튼과 보유 현황만 보여준다. 도감은 openCollection()으로 따로.
+function openGacha() {
   const zoom = document.getElementById("zoom");
-  const gacha = state.gacha;
   const ready = canPullToday();
-  const stage = el("div", { class: "gachaStage" });
-  if (lastResult) {
-    const rarity = RARITIES[lastResult.skin.rarity];
-    stage.classList.add("reveal", `rar-${lastResult.skin.rarity}`);
-    stage.style.setProperty("--rarity", rarity.color);
-    stage.append(el("div", { class: "gachaRarity", text: `★ ${rarity.label} ★` }), skinPreview(lastResult.skin), el("b", { text: lastResult.skin.name }), el("small", { text: lastResult.skin.desc }),
-      el("small", { class: "gachaNote", text: lastResult.duplicate ? `이미 가진 스킨이에요 → 🪙 +${lastResult.refund}` : "✨ 새 스킨! 아래 도감에서 책상에 놓아 보세요" }));
-  } else {
-    stage.append(el("div", { class: "gachaBox", text: "⌨️" }), el("small", { text: ready ? "오늘의 키보드를 뽑아 보세요" : `오늘은 뽑았어요 · ${timeUntilMidnight()} 뒤 다시` }));
-  }
+  const ownedByRarity = RARITY_ORDER.map(key => {
+    const total = KEYBOARD_SKINS.filter(skin => skin.rarity === key).length;
+    const owned = KEYBOARD_SKINS.filter(skin => skin.rarity === key && state.gacha.owned[skin.id]).length;
+    const chip = el("span", { class: "rarityCount", text: `${RARITIES[key].label} ${owned}/${total}` });
+    chip.style.setProperty("--rarity", RARITIES[key].color);
+    return chip;
+  });
   const pullButton = el("button", { class: "btn pink gachaPull", type: "button", disabled: !ready, text: ready ? "🎰 오늘의 뽑기 (무료 · 하루 1번)" : "내일 다시 만나요" });
   pullButton.addEventListener("click", () => {
-    if (!canPullToday()) return;
-    pullButton.disabled = true;
-    stage.className = "gachaStage rolling";
-    stage.replaceChildren(el("div", { class: "gachaBox", text: "⌨️" }), el("small", { text: "두구두구…" }));
-    playSound("gachaRoll");
-    setTimeout(() => {
-      const result = pullKeyboard();
-      if (!result) return;
-      playSound(["epic", "legend"].includes(result.skin.rarity) ? "gachaLegend" : "gachaReveal");
-      const rect = stage.getBoundingClientRect();
-      burst(rect.left + rect.width / 2, rect.top + rect.height / 2, result.skin.rarity === "legend" ? ["👑", "✨", "⌨️", "🌟"] : ["✨", "⌨️"], RARITY_ORDER.indexOf(result.skin.rarity) * 3 + 4);
-      renderGachaPill(); renderHeaderStats();
-      openGacha(result.skin.id, result);
-    }, 1100);
+    const result = pullKeyboard();
+    if (!result) return;
+    zoom.classList.remove("show");
+    renderGachaPill();
+    renderHeaderStats();
+    playGachaSequence(result);
   });
-  const grid = el("div", { class: "skinGrid" }, [...KEYBOARD_SKINS].sort((first, second) => RARITY_ORDER.indexOf(second.rarity) - RARITY_ORDER.indexOf(first.rarity)).map(skin => {
+  const odds = RARITY_ORDER.map(key => `${RARITIES[key].label} ${(RARITIES[key].chance * 100).toFixed(1).replace(".0", "")}%`).join(" · ");
+  zoom.replaceChildren(el("div", { class: "zoomCard chunky gachaCard", onclick: event => event.stopPropagation() },
+    el("h3", { text: "⌨️ 키보드 뽑기" }),
+    el("div", { class: "gachaStage" + (ready ? " ready" : "") },
+      el("div", { class: "gachaCapsuleIdle", text: "⌨️" }),
+      el("small", { text: ready ? "오늘의 키보드가 기다리고 있어요" : `오늘은 뽑았어요 · ${timeUntilMidnight()} 뒤 다시` })),
+    pullButton,
+    el("div", { class: "rarityCounts" }, ownedByRarity),
+    el("button", { class: "btn soft gachaToCollection", type: "button", text: `📖 도감 보기 ${ownedSkinCount()}/${KEYBOARD_SKINS.length}`, onclick: () => openCollection() }),
+    el("small", { class: "gachaOdds", text: `확률: ${odds} · 희귀 이상이 ${GACHA_PITY_PULLS}번 연속 안 나오면 다음은 희귀 이상 확정(지금 ${state.gacha.pity}번째) · 중복은 코인으로` })));
+  zoom.classList.add("show");
+}
+
+/* ---------- 뽑기 연출 ---------- */
+// 단계: ① 충전(캡슐이 흔들리고 빛이 빨려 들어감, 빛 색이 일반→실제 등급까지 한 단계씩 올라감)
+//      ② 폭발(화면 섬광·충격파·색종이, 전설은 화면이 흔들림) ③ 공개(회전 광선 + 키보드 등장, 별이 하나씩) ④ 이름·NEW/코인.
+// 화면을 누르면 바로 결과로 건너뛴다. 동작 줄이기 설정이면 처음부터 결과만.
+const GACHA_FX = { chargeMs: 1500, burstMs: 1500, revealMs: 1800, starStartMs: 2150, starGapMs: 220 };
+
+function spawnGachaConfetti(overlay, rarityKey, count) {
+  const palette = rarityKey === "legend" ? ["#ffd54a", "#ff5ac8", "#4de8ff", "#3dffa8", "#ffffff"] : [RARITIES[rarityKey].color, "#ffffff"];
+  for (let index = 0; index < count; index += 1) {
+    const piece = el("span", { class: "gfxConfetti" });
+    const angle = Math.random() * Math.PI * 2;
+    const distance = 120 + Math.random() * 260;
+    piece.style.setProperty("--dx", `${Math.round(Math.cos(angle) * distance)}px`);
+    piece.style.setProperty("--dy", `${Math.round(Math.sin(angle) * distance + 80)}px`);
+    piece.style.setProperty("--rot", `${Math.round(Math.random() * 720 - 360)}deg`);
+    piece.style.setProperty("--c", pickRandom(palette));
+    piece.style.animationDelay = `${Math.random() * 0.12}s`;
+    overlay.append(piece);
+    setTimeout(() => piece.remove(), 2000);
+  }
+}
+
+function playGachaSequence(result) {
+  const { skin, duplicate, refund } = result;
+  const rarity = RARITIES[skin.rarity];
+  const rarityIndex = RARITY_ORDER.indexOf(skin.rarity);
+  const stars = Array.from({ length: rarityStarCount(skin.rarity) }, () => el("span", { text: "★" }));
+  const closeOverlay = () => { timers.forEach(clearTimeout); overlay.remove(); duckBgm(false); renderGachaPill(); };
+  const resultCard = el("div", { class: "gfxResult" },
+    el("div", { class: "gfxStars" }, stars),
+    el("div", { class: "gfxKb" }, createKeyboardNode(skin)),
+    el("div", { class: "gfxRarity", text: `${skin.rarity.toUpperCase()} · ${rarity.label}` }),
+    el("b", { class: "gfxName", text: skin.name }),
+    el("small", { class: "gfxDesc", text: skin.desc }),
+    el("div", { class: "gfxBadge" + (duplicate ? " dup" : ""), text: duplicate ? `이미 가진 스킨 → 🪙 +${refund}` : "✨ NEW!" }),
+    el("div", { class: "gfxActions" },
+      el("button", { class: "btn pink", type: "button", text: "📖 도감에서 장착", onclick: event => { event.stopPropagation(); closeOverlay(); openCollection(skin.id); } }),
+      el("button", { class: "btn soft", type: "button", text: "닫기", onclick: event => { event.stopPropagation(); closeOverlay(); } })));
+  const overlay = el("div", { id: "gachaFx", class: `gachaFx rar-${skin.rarity}` },
+    el("div", { class: "gfxRays" }), el("div", { class: "gfxLines" }), el("div", { class: "gfxRing" }), el("div", { class: "gfxRing late" }),
+    el("div", { class: "gfxCapsule", text: "⌨️" }), resultCard, el("div", { class: "gfxFlash" }),
+    el("small", { class: "gfxSkip", text: "화면을 누르면 건너뛰기" }));
+  overlay.style.setProperty("--rarity", rarity.color);
+  overlay.style.setProperty("--tease", "#ffffff");
+  const timers = [];
+  const at = (milliseconds, action) => timers.push(setTimeout(action, milliseconds));
+  let finished = false;
+  const lightStar = index => { stars[index].classList.add("on"); playSound(`gachaStar${index}`); };
+  const finish = () => {
+    if (finished) return;
+    finished = true;
+    overlay.classList.add("named");
+    playSound(duplicate ? "coin" : "gachaNew");
+    duckBgm(false);
+  };
+  const skipToEnd = () => {
+    timers.forEach(clearTimeout);
+    overlay.style.setProperty("--tease", rarity.color);
+    if (!overlay.classList.contains("reveal")) playSound(`gachaFanfare_${skin.rarity}`);
+    overlay.classList.add("burst", "reveal", "skipped");
+    stars.forEach(star => star.classList.add("on"));
+    finish();
+  };
+  overlay.addEventListener("click", event => {
+    if (event.target.closest(".gfxActions")) return;
+    if (finished) closeOverlay(); else skipToEnd();
+  });
+  document.body.append(overlay);
+  duckBgm(true);
+  if (reducedMotion.matches) { skipToEnd(); return; }
+
+  overlay.classList.add("charge");
+  playSound("gachaCharge");
+  // 등급 예고: 흰빛에서 시작해 실제 등급 색까지 한 단계씩 올라간다(전설이면 5번 변함).
+  RARITY_ORDER.slice(0, rarityIndex + 1).forEach((key, index) => at(150 + index * (1150 / (rarityIndex + 1)), () => {
+    overlay.style.setProperty("--tease", RARITIES[key].color);
+    playSound(`gachaTease${index}`);
+  }));
+  at(800, () => overlay.classList.add("intense"));
+  at(GACHA_FX.burstMs, () => {
+    overlay.classList.add("burst");
+    playSound("gachaBurst");
+    spawnGachaConfetti(overlay, skin.rarity, 16 + rarityIndex * 14);
+  });
+  at(GACHA_FX.revealMs, () => {
+    overlay.classList.add("reveal");
+    playSound(`gachaFanfare_${skin.rarity}`);
+  });
+  stars.forEach((star, index) => at(GACHA_FX.starStartMs + index * GACHA_FX.starGapMs, () => lightStar(index)));
+  at(GACHA_FX.starStartMs + stars.length * GACHA_FX.starGapMs + 150, finish);
+  if (skin.rarity === "legend") at(GACHA_FX.revealMs + 600, () => spawnGachaConfetti(overlay, "legend", 40));
+}
+
+/* ---------- 도감 (따로) ---------- */
+// 등급 필터, 선택한 스킨 상세 + 팀원 책상에 장착/해제, 50칸 그리드.
+function openCollection(selectedSkinId = null, rarityFilter = "all") {
+  const zoom = document.getElementById("zoom");
+  const gacha = state.gacha;
+  const filterChips = el("div", { class: "collectionFilters" }, ["all", ...RARITY_ORDER.slice().reverse()].map(key => {
+    const skins = key === "all" ? KEYBOARD_SKINS : KEYBOARD_SKINS.filter(skin => skin.rarity === key);
+    const owned = skins.filter(skin => gacha.owned[skin.id]).length;
+    const chip = el("button", { type: "button", class: "kindChip" + (key === rarityFilter ? " on" : ""), text: `${key === "all" ? "전체" : RARITIES[key].label} ${owned}/${skins.length}`,
+      onclick: () => openCollection(selectedSkinId, key) });
+    if (key !== "all") chip.style.color = RARITIES[key].color;
+    return chip;
+  }));
+  const visibleSkins = [...KEYBOARD_SKINS].filter(skin => rarityFilter === "all" || skin.rarity === rarityFilter)
+    .sort((first, second) => RARITY_ORDER.indexOf(second.rarity) - RARITY_ORDER.indexOf(first.rarity));
+  const grid = el("div", { class: "skinGrid" }, visibleSkins.map(skin => {
     const owned = Boolean(gacha.owned[skin.id]);
     const cell = el("button", { type: "button", class: `skinCell rar-${skin.rarity}` + (owned ? "" : " locked") + (skin.id === selectedSkinId ? " selected" : ""), title: owned ? skin.name : "???",
-      onclick: () => { if (owned) openGacha(skin.id, lastResult); else showToast(`🔒 ${RARITIES[skin.rarity].label} 등급 · 아직 못 뽑았어요`); } },
-      owned ? skinPreview(skin) : el("div", { class: "kbPreview", text: "?" }), el("small", { text: owned ? skin.name : "???" }));
+      onclick: () => { if (owned) { playSound("ui"); openCollection(skin.id, rarityFilter); } else showToast(`🔒 ${RARITIES[skin.rarity].label} 등급 · 아직 못 뽑았어요`); } },
+      owned ? skinPreview(skin) : el("div", { class: "kbPreview", text: "?" }),
+      el("small", { text: owned ? skin.name : "???" }),
+      owned && gacha.owned[skin.id] > 1 ? el("i", { class: "skinCount", text: `×${gacha.owned[skin.id]}` }) : null);
     cell.style.setProperty("--rarity", RARITIES[skin.rarity].color);
     return cell;
   }));
   const selected = findSkin(selectedSkinId);
-  const detail = selected && gacha.owned[selected.id] ? el("div", { class: "skinDetail" },
-    el("b", { text: `${selected.name} · ${RARITIES[selected.rarity].label}` }), el("small", { text: selected.desc }),
-    el("div", { class: "equipRow" }, state.agents.map(agent => {
-      const isOn = gacha.equipped[agent.id] === selected.id;
-      return el("button", { type: "button", class: "kindChip" + (isOn ? " on" : ""), text: `${getPreset(agent.id).name}${isOn ? " ✓" : ""}`,
-        onclick: () => { equipSkin(agent.id, isOn ? null : selected.id); openGacha(selected.id, lastResult); } });
-    })), el("small", { class: "gachaNote", text: "팀원 이름을 누르면 그 책상에 놓여요. 다시 누르면 기본 키보드로." })) : null;
-  const odds = RARITY_ORDER.map(key => `${RARITIES[key].label} ${(RARITIES[key].chance * 100).toFixed(1).replace(".0", "")}%`).join(" · ");
-  zoom.replaceChildren(el("div", { class: "zoomCard chunky gachaCard", onclick: event => event.stopPropagation() },
-    el("h3", { text: `⌨️ 키보드 뽑기 · 도감 ${ownedSkinCount()}/${KEYBOARD_SKINS.length}` }), stage, pullButton,
-    el("small", { class: "gachaOdds", text: `확률: ${odds} · 희귀 이상이 ${GACHA_PITY_PULLS}번 연속 안 나오면 다음은 희귀 이상 확정(지금 ${gacha.pity}번째) · 중복은 코인으로` }),
-    detail, grid));
+  let detail = null;
+  if (selected && gacha.owned[selected.id]) {
+    detail = el("div", { class: "skinDetail" },
+      el("div", { class: "skinDetailPreview" }, createKeyboardNode(selected)),
+      el("b", { text: `${"★".repeat(rarityStarCount(selected.rarity))} ${selected.name} · ${RARITIES[selected.rarity].label}` }),
+      el("small", { text: selected.desc }),
+      el("div", { class: "equipRow" }, state.agents.map(agent => {
+        const isOn = gacha.equipped[agent.id] === selected.id;
+        return el("button", { type: "button", class: "kindChip" + (isOn ? " on" : ""), text: `${getPreset(agent.id).name}${isOn ? " ✓" : ""}`,
+          onclick: () => { equipSkin(agent.id, isOn ? null : selected.id); openCollection(selected.id, rarityFilter); } });
+      })),
+      el("small", { class: "gachaNote", text: "팀원 이름을 누르면 그 책상에 놓여요. 다시 누르면 기본 키보드로." }));
+    detail.style.setProperty("--rarity", RARITIES[selected.rarity].color);
+  }
+  zoom.replaceChildren(el("div", { class: "zoomCard chunky gachaCard collectionCard", onclick: event => event.stopPropagation() },
+    el("div", { class: "collectionHead" },
+      el("h3", { text: `📖 키보드 도감 ${ownedSkinCount()}/${KEYBOARD_SKINS.length}` }),
+      el("button", { class: "btn soft", type: "button", text: canPullToday() ? "🎰 뽑으러 가기" : "🎰 뽑기", onclick: () => openGacha() })),
+    filterChips, detail, grid));
   zoom.classList.add("show");
 }
