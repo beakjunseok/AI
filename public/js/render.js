@@ -32,14 +32,28 @@ function openRenamePrompt(kind, projectId) {
   const kindChips = project ? el("div", { class: "kindChips" }, Object.entries(PROJECT_KINDS).map(([key, kind]) =>
     el("button", { type: "button", class: "kindChip" + (key === chosenKind ? " on" : ""), dataset: { kind: key }, text: `${kind.icon} ${kind.label}`,
       onclick: event => { chosenKind = key; kindChips.querySelectorAll(".kindChip").forEach(chip => chip.classList.toggle("on", chip.dataset.kind === key)); event.preventDefault(); } }))) : null;
-  const form = el("form", { onclick: event => event.stopPropagation() }, input, kindChips,
+  // 종류에 따라 GitHub·웹 주소 칸을 보여준다(종류를 바꾸면 즉시 갱신).
+  const repoInput = el("input", { type: "text", inputmode: "url", autocapitalize: "off", placeholder: "https://github.com/사용자/저장소", "aria-label": "GitHub 주소", style: "width:100%" });
+  const siteInput = el("input", { type: "text", inputmode: "url", autocapitalize: "off", placeholder: "https://내사이트.vercel.app", "aria-label": "웹 주소", style: "width:100%" });
+  repoInput.value = project?.repoUrl || "";
+  siteInput.value = project?.siteUrl || "";
+  const repoRow = el("label", { class: "fieldRow" }, el("span", { text: "🐙 GitHub" }), repoInput);
+  const siteRow = el("label", { class: "fieldRow" }, el("span", { text: "🔗 웹 주소" }), siteInput);
+  const syncFieldRows = () => { const fields = PROJECT_KINDS[chosenKind].fields; repoRow.hidden = !fields.repo; siteRow.hidden = !fields.site; };
+  if (kindChips) { kindChips.addEventListener("click", () => setTimeout(syncFieldRows)); syncFieldRows(); }
+  const form = el("form", { onclick: event => event.stopPropagation() }, input, kindChips, project ? repoRow : null, project ? siteRow : null,
     el("button", { class: "btn pink", type: "submit", style: "width:100%;margin-top:8px", text: "바꾸기" }),
     kind === "app" ? el("button", { class: "btn soft", type: "button", style: "width:100%;margin-top:6px", text: "기본값으로", onclick: () => { input.value = DEFAULT_APP_TITLE; } }) : null);
   form.addEventListener("submit", event => {
     event.preventDefault();
     const name = input.value.replace(/\s+/g, " ").trim().slice(0, TITLE_MAX_LENGTH);
     if (!name) { showToast("이름을 입력해 주세요"); return; }
-    if (project) { project.name = name; project.kind = chosenKind; } else state.appTitle = name;
+    if (project) {
+      const repoUrl = normalizeUrl(repoInput.value);
+      const siteUrl = normalizeUrl(siteInput.value);
+      if (repoUrl === null || siteUrl === null) { showToast("주소는 http(s)://로 시작해야 해요"); return; }
+      Object.assign(project, { name, kind: chosenKind, repoUrl, siteUrl });
+    } else state.appTitle = name;
     saveState();
     zoom.classList.remove("show");
     renderAll();
@@ -49,6 +63,54 @@ function openRenamePrompt(kind, projectId) {
     el("h3", { text: project ? "✏️ 사무실 이름 · 종류" : "✏️ 제목 바꾸기" }), form));
   zoom.classList.add("show");
   setTimeout(() => { input.focus(); input.select(); }, 50);
+}
+
+// 빈 값은 ""; http(s) 주소만 허용(주소창용 javascript: 등 차단). 형식이 틀리면 null. 'github.com/..'처럼 생략하면 https:// 보충.
+function normalizeUrl(raw) {
+  const value = String(raw || "").trim();
+  if (!value) return "";
+  try {
+    const url = new URL(/^[a-z][a-z0-9+.-]*:/i.test(value) ? value : `https://${value}`);
+    return ["http:", "https:"].includes(url.protocol) ? url.href : null;
+  } catch (error) {
+    return null;
+  }
+}
+
+// 프로젝트 코드 칸: 아두이노·IoT 프로젝트의 현재 코드를 붙여 두면 AI가 참고하고, 브리프 '초기 코드'도 이어서 쓴다.
+function openCodeEditor(projectId) {
+  const project = findProject(projectId);
+  if (!project) return;
+  const zoom = document.getElementById("zoom");
+  const textarea = el("textarea", { class: "codeEditor", spellcheck: "false", maxlength: String(PROJECT_CODE_MAX_LENGTH), placeholder: "// 여기에 아두이노 코드(.ino)를 붙여넣거나 작성하세요\nvoid setup() {\n}\n\nvoid loop() {\n}", "aria-label": "프로젝트 코드" });
+  textarea.value = project.code || "";
+  const counter = el("small", { class: "codeCounter" });
+  const updateCounter = () => { counter.textContent = `${textarea.value.length.toLocaleString()} / ${PROJECT_CODE_MAX_LENGTH.toLocaleString()}자 · AI 대화엔 앞 3,000자, 초기 코드 작성엔 앞 8,000자를 참고`; };
+  textarea.addEventListener("input", updateCounter);
+  // 탭 키로 들여쓰기(포커스 이동 대신)
+  textarea.addEventListener("keydown", event => {
+    if (event.key !== "Tab") return;
+    event.preventDefault();
+    const { selectionStart, selectionEnd } = textarea;
+    textarea.setRangeText("  ", selectionStart, selectionEnd, "end");
+    updateCounter();
+  });
+  updateCounter();
+  const save = () => {
+    project.code = textarea.value.slice(0, PROJECT_CODE_MAX_LENGTH);
+    saveState();
+    zoom.classList.remove("show");
+    renderOffice();
+    showToast(project.code.trim() ? "💾 코드를 저장했어요. AI 팀원들이 참고해요" : "코드를 비웠어요");
+  };
+  const copy = () => navigator.clipboard?.writeText(textarea.value).then(() => showToast("코드를 복사했어요"), () => showToast("복사하지 못했어요"));
+  zoom.replaceChildren(el("div", { class: "zoomCard chunky codeCard", onclick: event => event.stopPropagation() },
+    el("h3", { text: `💾 ${project.name} · 코드` }), textarea, counter,
+    el("div", { class: "codeActions" },
+      el("button", { class: "btn soft", type: "button", text: "복사", onclick: copy }),
+      el("button", { class: "btn pink", type: "button", text: "저장", onclick: save }))));
+  zoom.classList.add("show");
+  setTimeout(() => textarea.focus(), 50);
 }
 
 function renderAppTitle() {

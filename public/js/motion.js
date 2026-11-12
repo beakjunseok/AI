@@ -432,12 +432,30 @@ function renderTabs() {
   tabs.append(form);
 }
 
+// 종류에 맞는 칸: GitHub·웹 주소 링크(없으면 '추가' 버튼), 코드 버튼.
+function projectLinkButtons(project) {
+  const fields = projectKindOf(project).fields;
+  const links = [];
+  const editLinks = () => openRenamePrompt("project", project.id);
+  if (fields.repo) links.push(project.repoUrl
+    ? el("a", { class: "linkChip", href: project.repoUrl, target: "_blank", rel: "noopener noreferrer", text: "🐙 GitHub" })
+    : el("button", { class: "linkChip empty", type: "button", text: "+ GitHub", onclick: editLinks }));
+  if (fields.site) links.push(project.siteUrl
+    ? el("a", { class: "linkChip", href: project.siteUrl, target: "_blank", rel: "noopener noreferrer", text: "🔗 사이트" })
+    : el("button", { class: "linkChip empty", type: "button", text: "+ 웹 주소", onclick: editLinks }));
+  if (fields.code) links.push(el("button", { class: "linkChip" + (project.code?.trim() ? "" : " empty"), type: "button",
+    text: project.code?.trim() ? `💾 코드 ${project.code.split("\n").length}줄` : "+ 코드", onclick: () => openCodeEditor(project.id) }));
+  return links;
+}
+
 function renderOffice() {
   const project = findProject(state.activeProjectId);
   const members = agentsInProject(project.id);
   document.getElementById("officeHead").replaceChildren(
     el("div", {}, el("h2", { title: "눌러서 이름 바꾸기", onclick: () => openRenamePrompt("project", project.id) }, `${project.name}/`, el("span", { class: "editHint", text: "✏️" })),
-      el("button", { class: "kindBadge", type: "button", title: "눌러서 프로젝트 종류 바꾸기", text: `${projectKindOf(project).icon} ${projectKindOf(project).label}`, onclick: () => openRenamePrompt("project", project.id) }),
+      el("div", { class: "projectLinks" },
+        el("button", { class: "kindBadge", type: "button", title: "눌러서 종류·주소 바꾸기", text: `${projectKindOf(project).icon} ${projectKindOf(project).label}`, onclick: () => openRenamePrompt("project", project.id) }),
+        ...projectLinkButtons(project)),
       el("small", { id: "officeStats" })),
     ...(state.projects.length > 1 ? [el("button", { class: "btn soft", text: "archive", onclick: () => closeProject(project.id) })] : [])
   );

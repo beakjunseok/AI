@@ -213,7 +213,7 @@ function buildBriefComposePrompt(topic, parts) {
     "너는 기획 문서 편집자다. AI 팀이 토론하고 각자 쓴 파트 메모를 하나의 '기획 브리프'로 합쳐라.",
     "이 문서는 다른 AI(Claude)가 이 문서만 읽고 바로 이어서 작업할 수 있어야 한다. 대화 맥락을 모른다고 가정하고 자족적으로 써라.",
     `주제: """${topic}"""`,
-    projectContextLine(),
+    projectContextLine(4000),
     "",
     "파트 메모:",
     partText,
@@ -236,6 +236,29 @@ function buildBriefComposePrompt(topic, parts) {
     "## Claude에게 요청",
     `(마지막 섹션은 Claude가 할 일을 번호 목록으로 구체적으로. 예: ${kind.ask} 등. 팀장이 확인해야 할 결정 사항도 표시.)`
   ].join("\n");
+}
+
+function buildStarterCodePrompt(topic, briefText, kind) {
+  return [
+    `너는 ${kind.label} 프로젝트의 시니어 개발자다. 아래 기획 브리프를 보고 바로 시작할 수 있는 '초기 코드'를 써라.`,
+    projectContextLine(8000),
+    `주제: """${topic}"""`,
+    "",
+    "기획 브리프:",
+    briefText.slice(0, 6000),
+    "",
+    `작성할 것: ${kind.starter}`,
+    "규칙: 이미 작성된 코드가 있으면 그걸 기준으로 고치거나 이어서 쓴다. 파일마다 '### 파일명' 제목 다음 언어가 표시된 마크다운 코드 블록 하나.",
+    "주석은 줄마다가 아니라 함수 단위로 목적만. 변수·함수 이름은 축약 없이 명확하게. 오류·예외 상황(센서 실패, 네트워크 끊김, 잘못된 입력)을 처리한다.",
+    "아직 정해지지 않은 값(핀 번호, API 키, 주소 등)은 상수로 빼고 'TODO:' 주석. 실제 비밀 키는 절대 넣지 않는다.",
+    "코드 블록 뒤에 '실행 방법' 3줄 이내. 그 외 설명은 쓰지 않는다. 한국어."
+  ].filter(Boolean).join("\n");
+}
+
+// 시뮬레이션(서버 미연결)용 초기 코드 예시.
+function simulateStarterCode(kind) {
+  if (kind.fields.code) return ["### main.ino", "```cpp", "// TODO: 실제 AI가 연결되면 브리프에 맞춘 코드가 채워져요", "const int SENSOR_PIN = A0;", "", "void setup() {", "  Serial.begin(115200);", "}", "", "void loop() {", "  int sensorValue = analogRead(SENSOR_PIN);", "  Serial.println(sensorValue);", "  delay(500);", "}", "```", "실행 방법: Arduino IDE에서 보드 선택 → 업로드 → 시리얼 모니터(115200)."].join("\n");
+  return ["### index.html", "```html", "<!doctype html>", "<html lang=\"ko\">", "<head><meta charset=\"utf-8\"><title>TODO</title></head>", "<body>", "  <h1>시작!</h1>", "  <script src=\"main.js\"></script>", "</body>", "</html>", "```", "실행 방법: index.html을 브라우저로 열기."].join("\n");
 }
 
 function simulateBrief(topic, authors) {
@@ -270,6 +293,19 @@ async function writeBrief() {
     extra: { kind: "brief", briefId },
     maxTokens: 2000
   });
+  // 개발 프로젝트면 코딩 담당이 이어서 '초기 코드'를 쓴다(따로 호출해서 브리프 본문 분량을 잡아먹지 않게).
+  const kind = projectKindOf(findProject(state.activeProjectId));
+  if (brief.ok && kind.starter) {
+    const coderId = discussion.members.find(id => getPreset(id).roleKey === "code") || (getAgent("bit") ? "bit" : editorId);
+    postSystemNote(`💻 @${getPreset(coderId).name}이(가) 초기 코드를 쓰는 중…`);
+    const code = await streamAgentMessage(coderId, {
+      prompt: buildStarterCodePrompt(discussion.topic, brief.text, kind),
+      simulate: () => simulateStarterCode(kind),
+      extra: { kind: "briefCode" },
+      maxTokens: 2000
+    });
+    if (code.ok) brief.text = `${brief.text.trim()}\n\n## 초기 코드\n${code.text.trim()}`;
+  }
   discussion.status = "done";
   if (brief.ok) {
     state.briefs.unshift({ id: briefId, topic: discussion.topic, text: brief.text, time: Date.now(), project: findProject(state.activeProjectId)?.name || "" });

@@ -156,8 +156,17 @@ function pickEngine(modelKey) {
 }
 
 // 지금 사무실(프로젝트)의 종류를 AI 프롬프트에 넣을 한 줄로. 일반 기획이면 빈 문자열.
-function projectContextLine() {
+// 링크(GitHub·웹 주소)와 저장해 둔 코드도 함께 넣는다. 코드는 길면 앞부분만(codeLimit 글자).
+function projectContextLine(codeLimit = 3000) {
   const project = findProject(state.activeProjectId);
   const kind = projectKindOf(project);
-  return kind.context ? `[프로젝트 종류: ${kind.icon} ${kind.label}] ${kind.context}` : "";
+  const lines = [];
+  if (kind.context) lines.push(`[프로젝트 종류: ${kind.icon} ${kind.label}] ${kind.context}`);
+  if (project?.repoUrl) lines.push(`GitHub 저장소: ${project.repoUrl}`);
+  if (project?.siteUrl) lines.push(`배포된 웹 주소: ${project.siteUrl}`);
+  if (project?.code?.trim()) {
+    const code = project.code.trim();
+    lines.push(`현재 작성된 코드(${code.length > codeLimit ? `앞 ${codeLimit}자만` : "전체"}):\n\`\`\`\n${code.slice(0, codeLimit)}\n\`\`\``);
+  }
+  return lines.join("\n");
 }
