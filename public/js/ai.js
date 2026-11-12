@@ -164,7 +164,7 @@ function projectContextLine(codeLimit = 3000) {
   if (kind.context) lines.push(`[프로젝트 종류: ${kind.icon} ${kind.label}] ${kind.context}`);
   if (project?.repoUrl) lines.push(`GitHub 저장소: ${project.repoUrl}`);
   if (project?.siteUrl) lines.push(`배포된 웹 주소: ${project.siteUrl}`);
-  if (project?.code?.trim()) {
+  if (codeLimit > 0 && project?.code?.trim()) {
     const code = project.code.trim();
     lines.push(`현재 작성된 코드(${code.length > codeLimit ? `앞 ${codeLimit}자만` : "전체"}):\n\`\`\`\n${code.slice(0, codeLimit)}\n\`\`\``);
   }

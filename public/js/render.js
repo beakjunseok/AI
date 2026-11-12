@@ -113,9 +113,14 @@ function openCodeEditor(projectId) {
     updateCounter();
   });
   updateCounter();
+  const reviewToggle = el("input", { type: "checkbox" });
+  reviewToggle.checked = project.autoReview !== false;
   const save = () => {
     const nextCode = textarea.value.slice(0, PROJECT_CODE_MAX_LENGTH);
-    if (nextCode !== (project.code || "")) {
+    const previousCode = project.code || "";
+    const changed = nextCode !== previousCode;
+    project.autoReview = reviewToggle.checked;
+    if (changed) {
       const { added, removed } = countLineChanges(project.code, nextCode);
       project.codeHistory = [{ time: Date.now(), code: nextCode, lines: nextCode.split("\n").length, added, removed }, ...(project.codeHistory || [])].slice(0, PROJECT_CODE_HISTORY_KEEP);
     }
@@ -124,6 +129,7 @@ function openCodeEditor(projectId) {
     zoom.classList.remove("show");
     renderOffice();
     showToast(project.code.trim() ? "💾 코드를 저장했어요. AI 팀원들이 참고해요" : "코드를 비웠어요");
+    if (changed) requestCodeReview(project.id, previousCode, nextCode);
   };
   const copy = () => navigator.clipboard?.writeText(textarea.value).then(() => showToast("코드를 복사했어요"), () => showToast("복사하지 못했어요"));
   const history = project.codeHistory || [];
@@ -136,7 +142,8 @@ function openCodeEditor(projectId) {
   const historyBox = el("details", { class: "codeHistory" }, el("summary", { text: `🕘 변경 기록 ${history.length}개 (최근 ${PROJECT_CODE_HISTORY_KEEP}개 보관)` }),
     history.length ? el("div", { class: "historyList" }, historyRows) : el("p", { class: "emptyNote", text: "아직 기록이 없어요. 코드를 저장하면 시간별로 남아요." }));
   zoom.replaceChildren(el("div", { class: "zoomCard chunky codeCard", onclick: event => event.stopPropagation() },
-    el("h3", { text: `💾 ${project.name} · 코드` }), textarea, counter, historyBox,
+    el("h3", { text: `💾 ${project.name} · 코드` }), textarea, counter,
+    el("label", { class: "reviewToggle" }, reviewToggle, " 저장할 때마다 AI가 바뀐 코드를 리뷰(기획방에 남김)"), historyBox,
     el("div", { class: "codeActions" },
       el("button", { class: "btn soft", type: "button", text: "복사", onclick: copy }),
       el("button", { class: "btn pink", type: "button", text: "저장", onclick: save }))));

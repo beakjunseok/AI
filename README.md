@@ -26,6 +26,7 @@ public/            정적 페이지 (빌드 도구 없음)
     chat.js        채팅(기획방/1:1)
     markdown.js    안전한 마크다운 렌더
     discussion.js  주제 토론·브레인스토밍·브리프
+    codereview.js  코드 저장 시 AI 자동 코드 리뷰(바뀐 줄 diff + 전체 코드)
     extras.js      확대·업적·AI 상태 배지
     fx.js          부팅·코드 레인·글리치 연출
     main.js        초기화(startApp)
