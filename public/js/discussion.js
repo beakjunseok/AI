@@ -213,7 +213,7 @@ function buildBriefComposePrompt(topic, parts) {
     "너는 기획 문서 편집자다. AI 팀이 토론하고 각자 쓴 파트 메모를 하나의 '기획 브리프'로 합쳐라.",
     "이 문서는 다른 AI(Claude)가 이 문서만 읽고 바로 이어서 작업할 수 있어야 한다. 대화 맥락을 모른다고 가정하고 자족적으로 써라.",
     `주제: """${topic}"""`,
-    projectContextLine(4000),
+    projectContextLine(),
     "",
     "파트 메모:",
     partText,

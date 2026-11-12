@@ -102,7 +102,7 @@ function openCodeEditor(projectId) {
   const textarea = el("textarea", { class: "codeEditor", spellcheck: "false", maxlength: String(PROJECT_CODE_MAX_LENGTH), placeholder: "// 여기에 아두이노 코드(.ino)를 붙여넣거나 작성하세요\nvoid setup() {\n}\n\nvoid loop() {\n}", "aria-label": "프로젝트 코드" });
   textarea.value = project.code || "";
   const counter = el("small", { class: "codeCounter" });
-  const updateCounter = () => { counter.textContent = `${textarea.value.length.toLocaleString()} / ${PROJECT_CODE_MAX_LENGTH.toLocaleString()}자 · AI 대화엔 앞 3,000자, 초기 코드 작성엔 앞 8,000자를 참고`; };
+  const updateCounter = () => { counter.textContent = `${textarea.value.length.toLocaleString()} / ${PROJECT_CODE_MAX_LENGTH.toLocaleString()}자 · 크레딧 절약: AI 대화엔 줄 수만 · 저장 리뷰엔 바뀐 부분만 · 초기 코드 작성 때만 앞 8,000자`; };
   textarea.addEventListener("input", updateCounter);
   // 탭 키로 들여쓰기(포커스 이동 대신)
   textarea.addEventListener("keydown", event => {

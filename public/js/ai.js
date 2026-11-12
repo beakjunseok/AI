@@ -156,14 +156,19 @@ function pickEngine(modelKey) {
 }
 
 // 지금 사무실(프로젝트)의 종류를 AI 프롬프트에 넣을 한 줄로. 일반 기획이면 빈 문자열.
-// 링크(GitHub·웹 주소)와 저장해 둔 코드도 함께 넣는다. 코드는 길면 앞부분만(codeLimit 글자).
-function projectContextLine(codeLimit = 3000) {
+// 링크(GitHub·웹 주소)와 코드 정보를 함께 넣는다. 크레딧 절약: 기본(codeLimit 0)은 코드 본문 없이 줄 수·마지막 수정 시각만,
+// 코드 본문은 초기 코드 작성처럼 꼭 필요할 때만 codeLimit 글자까지.
+function projectContextLine(codeLimit = 0) {
   const project = findProject(state.activeProjectId);
   const kind = projectKindOf(project);
   const lines = [];
   if (kind.context) lines.push(`[프로젝트 종류: ${kind.icon} ${kind.label}] ${kind.context}`);
   if (project?.repoUrl) lines.push(`GitHub 저장소: ${project.repoUrl}`);
   if (project?.siteUrl) lines.push(`배포된 웹 주소: ${project.siteUrl}`);
+  if (codeLimit <= 0 && project?.code?.trim()) {
+    const lastSaved = project.codeHistory?.[0]?.time;
+    lines.push(`저장된 코드: ${project.code.split("\n").length}줄${lastSaved ? ` (마지막 수정 ${new Date(lastSaved).toLocaleString("ko-KR", { hour12: false })})` : ""} · 본문은 생략됨`);
+  }
   if (codeLimit > 0 && project?.code?.trim()) {
     const code = project.code.trim();
     lines.push(`현재 작성된 코드(${code.length > codeLimit ? `앞 ${codeLimit}자만` : "전체"}):\n\`\`\`\n${code.slice(0, codeLimit)}\n\`\`\``);
