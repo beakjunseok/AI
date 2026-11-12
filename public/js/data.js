@@ -131,3 +131,28 @@ const DISCUSSION_MEMBER_LIMIT = 4;
 const DISCUSSION_DEFAULT_ROUNDS = 2;
 const BRIEF_KEEP = 10;
 const TICK_MS = 1300;
+
+// 프로젝트 종류: AI 프롬프트(토론·브레인스토밍·채팅)에 전제 조건으로 들어가고, 브리프에 종류별 섹션이 추가된다.
+// sections = 브리프에 넣을 추가 섹션, ask = 'Claude에게 요청'에 넣을 예시, neon = 사무실 벽 네온사인 문구
+const PROJECT_KINDS = {
+  general: { icon: "💡", label: "기획(일반)", neon: ["SHIP IT", "⚡"],
+    context: "",
+    sections: [], ask: "기획 검토 후 허점 지적, MVP 범위 확정, 화면 흐름 설계, 기술 스택 제안" },
+  web: { icon: "🌐", label: "웹 개발", neon: ["SHIP IT", "🌐"],
+    context: "웹 서비스(프론트엔드·백엔드·DB·배포)를 만든다는 전제로 생각해라. 화면 흐름, 반응형/모바일 웹, API와 데이터 구조, 인증, 호스팅(Vercel 등), 성능·접근성을 고려해라.",
+    sections: ["## 화면 흐름 · 페이지 구성", "## 기술 스택 · 데이터 구조 · API"], ask: "페이지별 화면 설계, 컴포넌트 구조, API·DB 스키마 초안, 배포 방법, 첫 구현 단계" },
+  arduino: { icon: "🔌", label: "아두이노 · 임베디드", neon: ["SOLDER ON", "🔌"],
+    context: "아두이노/ESP32 같은 마이크로컨트롤러 하드웨어를 만든다는 전제로 생각해라. 센서·액추에이터 부품 선정, 핀 배치와 배선, 전원(전압·전류·배터리), 펌웨어 루프와 타이밍, 통신(Serial/I2C/SPI/BLE/Wi-Fi), 케이스·내구성, 부품 가격을 고려해라.",
+    sections: ["## 하드웨어 구성 · 부품 목록 (모델명 · 수량 · 대략 가격)", "## 배선 · 핀 배치 · 전원", "## 펌웨어 동작 흐름"], ask: "부품 목록 확정, 회로도·핀 배치 표, 펌웨어 코드 골격(setup/loop), 단계별 테스트 방법" },
+  iot: { icon: "📡", label: "웹 + 아두이노 (IoT)", neon: ["IT'S ALIVE", "📡"],
+    context: "아두이노/ESP32 디바이스와 서버·웹 대시보드가 함께 동작하는 IoT 시스템이라는 전제로 생각해라. 디바이스↔서버↔웹 데이터 흐름, 통신 방식(HTTP/MQTT/WebSocket/Serial), 연결 끊김·지연 처리, 데이터 저장, 실시간 표시, 전원과 하드웨어 제약을 고려해라.",
+    sections: ["## 시스템 구성 (디바이스 ↔ 서버 ↔ 웹)", "## 하드웨어 · 부품 목록", "## 웹 화면 · API · 데이터 흐름"], ask: "시스템 구성도, 통신 프로토콜·메시지 형식, 펌웨어 골격, 서버 API·DB, 대시보드 화면 설계" },
+  app: { icon: "📱", label: "앱 개발", neon: ["PUSH TO STORE", "📱"],
+    context: "모바일 앱(iOS/Android, Flutter·React Native·네이티브)을 만든다는 전제로 생각해라. 화면 전환과 제스처, 오프라인 동작, 푸시 알림, 권한(카메라·위치 등), 로컬 저장, 스토어 심사와 배포를 고려해라.",
+    sections: ["## 화면 흐름 (앱)", "## 기술 스택 · 플랫폼 · 권한"], ask: "화면별 와이어프레임 설명, 내비게이션 구조, 프레임워크 선택 근거, 데이터 저장 방식, 스토어 배포 체크리스트" },
+  game: { icon: "🎮", label: "게임 개발", neon: ["PRESS START", "🎮"],
+    context: "게임을 만든다는 전제로 생각해라. 핵심 루프(30초 안에 재미), 조작감, 난이도 곡선, 보상·진행, 아트·사운드 톤, 엔진/플랫폼(웹·Unity·Godot 등)을 고려해라.",
+    sections: ["## 핵심 게임 루프 · 조작", "## 레벨 · 난이도 · 보상"], ask: "핵심 루프 프로토타입 범위, 조작·물리 규칙, 레벨 설계 초안, 엔진 선택, 첫 플레이어블 빌드 계획" }
+};
+const projectKindOf = project => PROJECT_KINDS[project?.kind] || PROJECT_KINDS.general;
+

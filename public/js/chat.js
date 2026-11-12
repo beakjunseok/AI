@@ -67,6 +67,7 @@ function buildChatPrompt(agentId, isTeamRound) {
   const roomContext = isTeamRound ? "" : buildHistory(2000);
   return [
     `여기는 '${findProject(state.activeProjectId)?.name || "기획"}' 프로젝트의 기획·브레인스토밍 채팅방이고, AI 팀원들과 '팀장'(사람)이 함께 쓴다. 팀원: ${roster}. 목표는 팀장의 아이디어를 넓히고 다듬어, 나중에 Claude에게 넘길 기획으로 만드는 것이다.`,
+    projectContextLine(),
     `너는 그중 '${preset.name}'이다. 역할: ${ROLE_LABELS[preset.roleKey]} 담당. 성격: ${preset.persona}`,
     `말투 예시: ${[...preset.lines.working, ...preset.lines.reply].join(" / ")}`,
     "",

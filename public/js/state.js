@@ -37,6 +37,7 @@ function loadState() {
     parsed.sequence = Math.max(Number(parsed.sequence) || 0, 1000);
     // 예전 버그로 새 프로젝트가 기존 프로젝트와 같은 id(p1 등)를 받은 저장본 복구: 중복 id는 새 id로 바꾼다.
     const seenProjectIds = new Set();
+    parsed.projects.forEach(project => { if (!PROJECT_KINDS[project.kind]) project.kind = "general"; });
     parsed.projects.forEach(project => {
       if (seenProjectIds.has(project.id)) project.id = `p${parsed.sequence++}`;
       seenProjectIds.add(project.id);

@@ -154,3 +154,10 @@ function openAccessPrompt() {
 function pickEngine(modelKey) {
   return fallbackChain(modelKey).find(isProviderAvailable) || null;
 }
+
+// 지금 사무실(프로젝트)의 종류를 AI 프롬프트에 넣을 한 줄로. 일반 기획이면 빈 문자열.
+function projectContextLine() {
+  const project = findProject(state.activeProjectId);
+  const kind = projectKindOf(project);
+  return kind.context ? `[프로젝트 종류: ${kind.icon} ${kind.label}] ${kind.context}` : "";
+}

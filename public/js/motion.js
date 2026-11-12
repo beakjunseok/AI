@@ -413,19 +413,21 @@ function renderTabs() {
     tabs.append(el("button", {
       class: "tab" + (project.id === state.activeProjectId ? " active" : ""), dataset: { tab: project.id },
       onclick: () => { if (switchProject(project.id)) { saveState(); renderAll(); } }
-    }, project.name, el("span", { class: "count", text: `${agentsInProject(project.id).length}명` })));
+    }, `${projectKindOf(project).icon} ${project.name}`, el("span", { class: "count", text: `${agentsInProject(project.id).length}명` })));
   });
-  const form = el("form", { class: "newProject" }, el("input", { placeholder: "+ new repo", maxlength: "20" }));
+  const kindSelect = el("select", { class: "kindSelect", "aria-label": "프로젝트 종류", title: "프로젝트 종류" },
+    Object.entries(PROJECT_KINDS).map(([key, kind]) => el("option", { value: key, text: `${kind.icon} ${kind.label}` })));
+  const form = el("form", { class: "newProject" }, kindSelect, el("input", { placeholder: "+ new repo", maxlength: "20" }));
   form.addEventListener("submit", event => {
     event.preventDefault();
     const name = form.querySelector("input").value.trim();
     if (!name) return;
     if (state.projects.length >= 8) { showToast("프로젝트는 8개까지 만들 수 있어요"); return; }
-    const project = { id: nextId("p"), name, tasks: [] };
+    const project = { id: nextId("p"), name, kind: kindSelect.value, tasks: [] };
     state.projects.push(project);
     if (!switchProject(project.id)) { state.projects.pop(); return; }
     saveState(); renderAll();
-    showToast(`'${name}' 레포 생성 완료`);
+    showToast(`${projectKindOf(project).icon} '${name}' 레포 생성 완료 · ${projectKindOf(project).label}`);
   });
   tabs.append(form);
 }
@@ -434,9 +436,13 @@ function renderOffice() {
   const project = findProject(state.activeProjectId);
   const members = agentsInProject(project.id);
   document.getElementById("officeHead").replaceChildren(
-    el("div", {}, el("h2", { title: "눌러서 이름 바꾸기", onclick: () => openRenamePrompt("project", project.id) }, `${project.name}/`, el("span", { class: "editHint", text: "✏️" })), el("small", { id: "officeStats" })),
+    el("div", {}, el("h2", { title: "눌러서 이름 바꾸기", onclick: () => openRenamePrompt("project", project.id) }, `${project.name}/`, el("span", { class: "editHint", text: "✏️" })),
+      el("button", { class: "kindBadge", type: "button", title: "눌러서 프로젝트 종류 바꾸기", text: `${projectKindOf(project).icon} ${projectKindOf(project).label}`, onclick: () => openRenamePrompt("project", project.id) }),
+      el("small", { id: "officeStats" })),
     ...(state.projects.length > 1 ? [el("button", { class: "btn soft", text: "archive", onclick: () => closeProject(project.id) })] : [])
   );
+  const [neonText, neonIcon] = projectKindOf(project).neon;
+  document.querySelector("#office .neonSign").replaceChildren(neonText, el("span", { text: neonIcon }));
   const grid = document.getElementById("deskGrid");
   grid.replaceChildren();
   for (let slotIndex = 0; slotIndex < SLOT_COUNT; slotIndex++) {

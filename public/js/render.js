@@ -27,21 +27,26 @@ function openRenamePrompt(kind, projectId) {
   const zoom = document.getElementById("zoom");
   const input = el("input", { type: "text", maxlength: String(TITLE_MAX_LENGTH), style: "width:100%;margin-top:10px", "aria-label": "새 이름" });
   input.value = current;
-  const form = el("form", { onclick: event => event.stopPropagation() }, input,
+  // 프로젝트면 종류도 여기서 바꾼다(AI 토론·브리프의 전제가 바뀜).
+  let chosenKind = project?.kind || "general";
+  const kindChips = project ? el("div", { class: "kindChips" }, Object.entries(PROJECT_KINDS).map(([key, kind]) =>
+    el("button", { type: "button", class: "kindChip" + (key === chosenKind ? " on" : ""), dataset: { kind: key }, text: `${kind.icon} ${kind.label}`,
+      onclick: event => { chosenKind = key; kindChips.querySelectorAll(".kindChip").forEach(chip => chip.classList.toggle("on", chip.dataset.kind === key)); event.preventDefault(); } }))) : null;
+  const form = el("form", { onclick: event => event.stopPropagation() }, input, kindChips,
     el("button", { class: "btn pink", type: "submit", style: "width:100%;margin-top:8px", text: "바꾸기" }),
     kind === "app" ? el("button", { class: "btn soft", type: "button", style: "width:100%;margin-top:6px", text: "기본값으로", onclick: () => { input.value = DEFAULT_APP_TITLE; } }) : null);
   form.addEventListener("submit", event => {
     event.preventDefault();
     const name = input.value.replace(/\s+/g, " ").trim().slice(0, TITLE_MAX_LENGTH);
     if (!name) { showToast("이름을 입력해 주세요"); return; }
-    if (project) project.name = name; else state.appTitle = name;
+    if (project) { project.name = name; project.kind = chosenKind; } else state.appTitle = name;
     saveState();
     zoom.classList.remove("show");
     renderAll();
-    showToast(`'${name}'(으)로 바꿨어요`);
+    showToast(project ? `${projectKindOf(project).icon} '${name}' · ${projectKindOf(project).label}` : `'${name}'(으)로 바꿨어요`);
   });
   zoom.replaceChildren(el("div", { class: "zoomCard chunky", onclick: event => event.stopPropagation() },
-    el("h3", { text: project ? "✏️ 사무실 이름 바꾸기" : "✏️ 제목 바꾸기" }), form));
+    el("h3", { text: project ? "✏️ 사무실 이름 · 종류" : "✏️ 제목 바꾸기" }), form));
   zoom.classList.add("show");
   setTimeout(() => { input.focus(); input.select(); }, 50);
 }

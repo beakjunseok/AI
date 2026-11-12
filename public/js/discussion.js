@@ -26,6 +26,7 @@ function buildDiscussionPrompt(agentId, topic, round) {
     : "앞 팀원들의 말에 반응해라: 동의·반박·결합 중 하나를 분명히 하고, 대상 사용자·핵심 기능·차별점·리스크 중 하나를 더 구체적으로 좁혀라. 이미 나온 말 반복 금지.";
   return [
     `AI 팀원들이 '${findProject(state.activeProjectId)?.name || "기획"}' 프로젝트에서 팀장의 주제를 함께 구체화하는 토론 중이다. 참가자: ${members}.`,
+    projectContextLine(),
     `너는 '${preset.name}'(${ROLE_LABELS[preset.roleKey]} 관점). 성격: ${preset.persona}`,
     `말투 예시: ${preset.lines.reply.join(" / ")}`,
     `토론 주제: """${topic}"""`,
@@ -82,6 +83,7 @@ function buildBrainstormPrompt(agentId, seed, previousIdeas) {
   const preset = getPreset(agentId);
   return [
     `'${findProject(state.activeProjectId)?.name || "기획"}' 프로젝트 기획방에서 브레인스토밍 중이다. 비판·평가 금지, 양과 다양성이 목표다.`,
+    projectContextLine(),
     `너는 '${preset.name}'(${ROLE_LABELS[preset.roleKey]} 관점). 성격: ${preset.persona}`,
     seed ? `주제: """${seed}"""` : "주제: 아래 기획방 대화에서 다루던 것.",
     "",
@@ -204,12 +206,14 @@ function buildBriefPartPrompt(agentId, topic) {
 }
 
 function buildBriefComposePrompt(topic, parts) {
+  const kind = projectKindOf(findProject(state.activeProjectId));
   const partText = parts.map(part => `[${getPreset(part.from).name} · ${ROLE_LABELS[getPreset(part.from).roleKey]}]\n${part.text}`).join("\n\n");
   const authors = parts.map(part => getPreset(part.from).name).join("·");
   return [
     "너는 기획 문서 편집자다. AI 팀이 토론하고 각자 쓴 파트 메모를 하나의 '기획 브리프'로 합쳐라.",
     "이 문서는 다른 AI(Claude)가 이 문서만 읽고 바로 이어서 작업할 수 있어야 한다. 대화 맥락을 모른다고 가정하고 자족적으로 써라.",
     `주제: """${topic}"""`,
+    projectContextLine(),
     "",
     "파트 메모:",
     partText,
@@ -220,21 +224,24 @@ function buildBriefComposePrompt(topic, parts) {
     "출력은 아래 마크다운 형식 그대로(제목 문구 유지), 한국어, 군더더기 없이:",
     `# 기획 브리프: (주제를 짧게)`,
     `_작성: AI//OFFICE 팀 (${authors})_`,
+    `_프로젝트 종류: ${kind.icon} ${kind.label}_`,
     "## 한 줄 요약",
     "## 배경 · 해결할 문제",
     "## 타깃 사용자",
     "## 핵심 아이디어",
     "## 주요 기능 (우선순위: P0 / P1 / P2)",
+    ...kind.sections,
     "## 차별점",
     "## 리스크 · 미해결 질문",
     "## Claude에게 요청",
-    "(마지막 섹션은 Claude가 할 일을 번호 목록으로 구체적으로. 예: 기획 검토 후 허점 지적, MVP 범위 확정, 화면 흐름 설계, 기술 스택 제안 등. 팀장이 확인해야 할 결정 사항도 표시.)"
+    `(마지막 섹션은 Claude가 할 일을 번호 목록으로 구체적으로. 예: ${kind.ask} 등. 팀장이 확인해야 할 결정 사항도 표시.)`
   ].join("\n");
 }
 
 function simulateBrief(topic, authors) {
-  return [`# 기획 브리프: ${topic.slice(0, 40)}`, `_작성: AI//OFFICE 팀 (${authors})_`, "## 한 줄 요약", `- ${topic}`, "## 배경 · 해결할 문제", "- (시뮬레이션) 실제 AI가 연결되면 토론 내용으로 채워져요.",
-    "## 타깃 사용자", "- (미정)", "## 핵심 아이디어", "- (미정)", "## 주요 기능 (우선순위: P0 / P1 / P2)", "- P0: (미정)", "## 차별점", "- (미정)", "## 리스크 · 미해결 질문", "- (미정)",
+  const kind = projectKindOf(findProject(state.activeProjectId));
+  return [`# 기획 브리프: ${topic.slice(0, 40)}`, `_작성: AI//OFFICE 팀 (${authors})_`, `_프로젝트 종류: ${kind.icon} ${kind.label}_`, "## 한 줄 요약", `- ${topic}`, "## 배경 · 해결할 문제", "- (시뮬레이션) 실제 AI가 연결되면 토론 내용으로 채워져요.",
+    "## 타깃 사용자", "- (미정)", "## 핵심 아이디어", "- (미정)", "## 주요 기능 (우선순위: P0 / P1 / P2)", "- P0: (미정)", ...kind.sections.flatMap(section => [section, "- (미정)"]), "## 차별점", "- (미정)", "## 리스크 · 미해결 질문", "- (미정)",
     "## Claude에게 요청", "1. 이 기획을 검토하고 빠진 부분을 질문해 줘", "2. MVP 범위와 화면 흐름을 제안해 줘"].join("\n");
 }
 
