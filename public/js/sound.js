@@ -4,7 +4,7 @@
 // 같은 소리가 연달아 터지지 않게 종류별 최소 간격을 둔다. 소리 1회당 O(음 개수)
 
 const SOUND_MASTER_VOLUME = 0.3;
-const SOUND_MIN_GAP_MS = { typing: 70, step: 180, keyClick: 45, ui: 40, default: 80 };
+const SOUND_MIN_GAP_MS = { typing: 70, step: 180, keyClick: 45, ui: 40, gachaFlip: 60, default: 80 };
 const SOUND_UNLOCK_GRACE_MS = 400;
 
 let audioContext = null;
@@ -220,6 +220,14 @@ const SOUND_RECIPES = {
     playNoise(context, { duration: 0.55, volume: 0.32, filterType: "lowpass", frequency: 2200, endFrequency: 180 });
     playNoise(context, { startOffset: 0.03, duration: 0.9, volume: 0.09, filterType: "highpass", frequency: 6500 });
   },
+  gachaFlip: context => {
+    playNoise(context, { duration: 0.12, volume: 0.09, frequency: 1200, endFrequency: 4200, q: 1.2 });
+    playTone(context, { frequency: 1400, endFrequency: 2100, type: "triangle", startOffset: 0.06, duration: 0.05, volume: 0.06 });
+  },
+  coinSpend: context => [NOTE.E6, NOTE.C6, NOTE.G5].forEach((frequency, index) => {
+    playTone(context, { frequency, type: "square", startOffset: index * 0.07, duration: 0.07, volume: 0.07 });
+    playNoise(context, { startOffset: index * 0.07, duration: 0.03, volume: 0.05, filterType: "highpass", frequency: 6000 });
+  }),
   gachaNew: context => [NOTE.E6, NOTE.G6, NOTE.C7, 2637.02, 3135.96].forEach((frequency, index) => playTone(context, { frequency, type: "triangle", startOffset: index * 0.045, duration: 0.2, volume: 0.11 })),
   gachaFanfare_common: context => playNotes(context, [[NOTE.G5, 0, 0.12], [NOTE.C6, 0.1, 0.35]], { volume: 0.2 }),
   gachaFanfare_uncommon: context => playNotes(context, [[NOTE.C6, 0, 0.1], [NOTE.E6, 0.09, 0.1], [NOTE.G6, 0.18, 0.4]], { volume: 0.2 }),
@@ -288,7 +296,7 @@ function playSound(name) {
   const recipe = SOUND_RECIPES[name];
   if (!recipe || !state.sound || document.hidden || !audioContext) return;
   // 뽑기 연출 중에는 사무실 잡음(발소리·타건음 등)을 끄고 연출 소리만 들리게.
-  if (document.getElementById("gachaFx") && !/^(gacha|coin|ui)/.test(name)) return;
+  if (document.getElementById("gachaFx") && !/^(gacha|coin|ui|error)/.test(name)) return;
   const now = performance.now();
   const minimumGap = SOUND_MIN_GAP_MS[name] ?? SOUND_MIN_GAP_MS.default;
   if (now - (soundLastPlayedAt[name] || 0) < minimumGap) return;

@@ -178,3 +178,37 @@ main{display:grid;grid-template-columns:1fr;gap:14px;padding:0 12px 28px}
 .skinDetailPreview .keyboard{position:relative;left:auto;bottom:auto;transform:perspective(40px) rotateX(26deg);scale:3.2}
 .equipRow{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;justify-content:center}
 @media (prefers-reduced-motion:reduce){.gachaFx *{animation:none!important;transition:none!important}}
+
+/* 코인 뽑기 · 10연속 */
+.gachaCoinRow{display:grid;grid-template-columns:1fr 1.3fr;gap:8px;margin-top:8px}
+.gachaCoinPull{display:flex;flex-direction:column;align-items:center;gap:2px;padding:9px 6px;border:0;color:var(--ink);background:#12161b;box-shadow:inset 0 0 0 1px var(--warn);clip-path:var(--cut);cursor:pointer}
+.gachaCoinPull b{font-size:13px}
+.gachaCoinPull small{font:11px var(--mono);color:var(--warn)}
+.gachaCoinPull.ten{background:linear-gradient(135deg,#2a1d0a,#12161b);box-shadow:inset 0 0 0 1px var(--warn),0 0 14px -4px var(--warn)}
+.gachaCoinPull:disabled{opacity:.45;cursor:not-allowed;box-shadow:inset 0 0 0 1px var(--line)}
+.gachaCoinPull:disabled small{color:var(--sub)}
+.gachaWallet{display:block;margin-top:6px;text-align:center;color:var(--sub);font:11px var(--mono)}
+.gfxResult.multi{width:min(420px,95vw);gap:10px}
+.gfxCards{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px;width:100%}
+.gfxCard{min-width:0;aspect-ratio:3/4;perspective:420px;opacity:0;scale:.5}
+.gachaFx.reveal .gfxCard{animation:gfxCardIn .4s cubic-bezier(.2,1.5,.4,1) calc(var(--i) * 35ms) forwards}
+.gachaFx.skipped .gfxCard{animation:none;opacity:1;scale:1}
+@keyframes gfxCardIn{to{opacity:1;scale:1}}
+.gfxCardInner{position:relative;width:100%;height:100%;transition:transform .5s cubic-bezier(.3,1.35,.5,1);transform-style:preserve-3d}
+.gfxCard.flipped .gfxCardInner{transform:rotateY(180deg)}
+.gfxCardBack,.gfxCardFront{position:absolute;inset:0;-webkit-backface-visibility:hidden;backface-visibility:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border-radius:6px;overflow:hidden}
+.gfxCardBack{font-size:20px;background:repeating-linear-gradient(45deg,#151b26 0 6px,#10151e 6px 12px);box-shadow:inset 0 0 0 1px #3a4452}
+.gfxCard.hint .gfxCardBack{box-shadow:inset 0 0 0 1.5px var(--rarity),0 0 12px -2px var(--rarity);animation:gfxHint .7s ease-in-out infinite}
+@keyframes gfxHint{50%{box-shadow:inset 0 0 0 1.5px var(--rarity),0 0 20px 0 var(--rarity)}}
+.gfxCardFront{transform:rotateY(180deg);padding:3px;background:radial-gradient(circle at 50% 30%,color-mix(in srgb,var(--rarity) 28%,#0b0e14),#06080b 78%);box-shadow:inset 0 0 0 1.5px var(--rarity),0 0 12px -3px var(--rarity)}
+.gfxCardStars{font-size:8px;color:var(--rarity);letter-spacing:-1px;text-shadow:0 0 6px var(--rarity)}
+.gfxCardKb{height:26px;width:100%;display:grid;place-items:center}
+.gfxCardKb .keyboard{position:relative;left:auto;bottom:auto;transform:perspective(40px) rotateX(26deg);scale:1.2}
+.gfxCardFront small{font:9px var(--mono);color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.gfxCardTag{font:700 8px var(--tech);font-style:normal;padding:1px 5px;background:var(--rarity);color:#05070a}
+.gfxCardTag.dup{background:transparent;color:var(--warn);padding:0}
+.gfxCard.flipped.rar-epic .gfxCardFront,.gfxCard.flipped.rar-legend .gfxCardFront{animation:gfxCardGlow 1.3s ease-in-out infinite}
+@keyframes gfxCardGlow{50%{box-shadow:inset 0 0 0 1.5px var(--rarity),0 0 22px 2px var(--rarity)}}
+.gfxCard.flipped.rar-legend{animation:gfxLegendCard .6s ease-out}
+@keyframes gfxLegendCard{40%{scale:1.25}}
+.gachaFx.multi .gfxActions{flex-wrap:wrap;justify-content:center}
