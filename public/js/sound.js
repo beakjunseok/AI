@@ -166,10 +166,10 @@ const SOUND_RECIPES = {
   ui: context => playTone(context, { frequency: 1800, endFrequency: 1500, duration: 0.025, volume: 0.06 }),
   toggleOn: context => { playTone(context, { frequency: 660, duration: 0.06, volume: 0.16 }); playTone(context, { frequency: 990, startOffset: 0.06, duration: 0.08, volume: 0.16 }); },
   toggleOff: context => { playTone(context, { frequency: 990, duration: 0.06, volume: 0.14 }); playTone(context, { frequency: 620, startOffset: 0.06, duration: 0.09, volume: 0.14 }); },
-  // 타건음: 고음 '딸깍'(잡음) + 아주 짧은 저음 '톡'(키가 바닥에 닿는 소리). 버튼 딸깍보다 조금 크게.
+  // 타건음: 고음 '딸깍'(잡음) + 아주 짧은 저음 '톡'(키가 바닥에 닿는 소리). 버튼 딸깍과 비슷한 크기.
   keyClick: context => {
-    playNoise(context, { duration: 0.014 + Math.random() * 0.008, volume: 0.12 + Math.random() * 0.06, filterType: "bandpass", frequency: 2200 + Math.random() * 2200, q: 2.5 });
-    playTone(context, { frequency: 280 + Math.random() * 90, endFrequency: 180, type: "triangle", duration: 0.025, volume: 0.08, attack: 0.002 });
+    playNoise(context, { duration: 0.014 + Math.random() * 0.008, volume: 0.085 + Math.random() * 0.04, filterType: "bandpass", frequency: 2200 + Math.random() * 2200, q: 2.5 });
+    playTone(context, { frequency: 280 + Math.random() * 90, endFrequency: 180, type: "triangle", duration: 0.025, volume: 0.055, attack: 0.002 });
   },
   brew: context => {
     [0, 0.18, 0.4, 0.62].forEach(startOffset => playNoise(context, { startOffset, duration: 0.16, volume: 0.07, filterType: "lowpass", frequency: 700 + Math.random() * 300, endFrequency: 300 }));
