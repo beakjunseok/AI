@@ -1,6 +1,14 @@
 /* ================= 캐릭터 (SVG) ================= */
 // 캐릭터를 SVG로 그린다(벡터 · 부드러운 외곽선). 표정·액세서리는 팀원별 LOOK 설정으로 조합하고,
 // 포즈(idle/walk/type/sleep/flail)는 SVG 안 CSS 애니메이션으로 움직인다. 결과는 data URI로 캐시.
+// 1:1 패널용 큰 프로필 일러스트(public/img). 없는 팀원은 기존 SVG 캐릭터를 크게 쓴다.
+const PROFILE_ART = { lumi: "img/profile-lumi.webp", moka: "img/profile-moka.webp", bit: "img/profile-bit.webp" };
+
+function profileImage(agentId) {
+  if (!PROFILE_ART[agentId]) return spriteImage(agentId, "bigSprite");
+  return el("img", { class: "bigSprite profileArt", src: PROFILE_ART[agentId], alt: getPreset(agentId).name, draggable: "false" });
+}
+
 const CHARACTER_LOOKS = {
   lumi: { hair: "side", accessories: ["lanyard"], pants: "#2b3445", brows: "up" },
   moka: { hair: "fringe", accessories: ["beanie"], pants: "#2f3a35", brows: "soft" },

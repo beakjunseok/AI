@@ -27,3 +27,17 @@ header h1.glitch{animation:glitch .28s steps(2) 1}
 #boot .ok{color:var(--cyan)} #boot .warn{color:var(--hot)}
 #boot .cursor{display:inline-block;width:8px;height:14px;background:var(--ok);vertical-align:middle;animation:blinkCursor .8s steps(1) infinite}
 @keyframes blinkCursor{50%{opacity:0}}
+
+/* ---------- 그림 배경·프로필 (Hugging Face Z-Image로 생성한 이미지, public/img) ---------- */
+/* 사무실 벽: 그림에 창문·서버랙·코르크보드·조명이 다 있으므로 CSS로 그리던 소품은 숨기고 네온사인·시계만 위에 얹는다 */
+.wall.art{height:150px;background:linear-gradient(180deg,rgba(11,14,18,.1),rgba(11,14,18,.45) 70%,#0b0e12 100%),url(../img/office-wall.webp) center 55%/cover no-repeat}
+.wall.art .window,.wall.art .rack,.wall.art .board,.wall.art .wallPlant,.wall.art .ceilingLamp,.wall.art .poster{display:none}
+.wall.art #rain{opacity:.08}
+/* 휴게실: 커피 바·자판기 그림 앞에 소파(CSS)와 팀원이 앉는다 */
+.sofa.art{min-height:190px;padding-top:70px;clip-path:var(--cutSm);background:linear-gradient(180deg,rgba(11,14,18,0) 40%,rgba(11,14,18,.55) 100%),url(../img/lounge-wall.webp) center 35%/cover no-repeat;box-shadow:inset 0 0 0 1px var(--line)}
+.sofa.art::before{left:12%;right:12%}
+.sofa.art::after{left:calc(12% + 14px);right:calc(12% + 14px)}
+.panelHead .bigSprite.profileArt{object-fit:cover;padding:0;background:#0b0e14}
+.gfxKb.hasArt{height:auto;flex-direction:column;gap:6px}
+.gfxArt{width:min(240px,62vw);aspect-ratio:3/4;object-fit:cover;border-radius:10px;box-shadow:0 0 0 2px var(--rarity),0 0 40px -6px var(--rarity)}
+.skinDetailArt{width:140px;aspect-ratio:3/4;object-fit:cover;border-radius:8px;box-shadow:0 0 0 1.5px var(--rarity),0 0 20px -6px var(--rarity)}

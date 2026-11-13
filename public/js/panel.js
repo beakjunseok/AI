@@ -111,7 +111,7 @@ function renderAgentHead(agentId) {
   }));
   return [
     el("div", { class: "panelHead" },
-      spriteImage(agentId, "bigSprite"),
+      profileImage(agentId),
       el("div", {},
         el("h2", {}, preset.name, el("span", { class: "roleChip", text: `${ROLE_LABELS[preset.roleKey]} 담당` })),
         el("div", { class: "modelRow" }, "🧠 두뇌", modelSelect),
