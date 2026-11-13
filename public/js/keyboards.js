@@ -80,8 +80,8 @@ const KEYBOARD_SKINS = [
   S("quantum_rainbow", "무지개 양자", "legend", "split", "#14161d", "#07080c", "#ffffff", "#ffffff", { case: RAINBOW, fx: ["flow", "float", "hue"], glow: "#ffffff", keys: "ortho", desc: "모든 색이 동시에 존재한다" })
 ];
 const findSkin = skinId => KEYBOARD_SKINS.find(skin => skin.id === skinId);
-// 전설 키보드 카드 일러스트(public/img). 그림이 있는 스킨은 뽑기 공개·도감 상세에서 그림을 크게 보여준다.
-const KEYBOARD_ART = {};
+// 전설 키보드 카드 일러스트: img/kb-<skinId>.webp(또는 .png). 그림이 있으면 뽑기 공개·도감 상세에서 크게 보여준다.
+const hasKeyboardArt = skin => skin.rarity === "legend";
 
 /* ---------- 그리기 ---------- */
 // 스킨을 키보드 노드에 입힌다. 스킨이 없으면 팀원별 기본 키보드(kb-<id>).
@@ -260,8 +260,8 @@ function playGachaSequence(result) {
   const closeOverlay = () => { timers.forEach(clearTimeout); overlay.remove(); duckBgm(false); renderGachaPill(); renderHeaderStats(); };
   const resultCard = el("div", { class: "gfxResult" },
     el("div", { class: "gfxStars" }, stars),
-    KEYBOARD_ART[skin.id]
-      ? el("div", { class: "gfxKb hasArt" }, el("img", { class: "gfxArt", src: KEYBOARD_ART[skin.id], alt: skin.name }))
+    hasKeyboardArt(skin)
+      ? el("div", { class: "gfxKb hasArt" }, artImage(`kb-${skin.id}`, { class: "gfxArt", alt: skin.name }, () => createKeyboardNode(skin)))
       : el("div", { class: "gfxKb" }, createKeyboardNode(skin)),
     el("div", { class: "gfxRarity", text: `${skin.rarity.toUpperCase()} · ${rarity.label}` }),
     el("b", { class: "gfxName", text: skin.name }),
@@ -456,7 +456,7 @@ function openCollection(selectedSkinId = null, rarityFilter = "all") {
   let detail = null;
   if (selected && gacha.owned[selected.id]) {
     detail = el("div", { class: "skinDetail" },
-      KEYBOARD_ART[selected.id] ? el("img", { class: "skinDetailArt", src: KEYBOARD_ART[selected.id], alt: selected.name }) : null,
+      hasKeyboardArt(selected) ? artImage(`kb-${selected.id}`, { class: "skinDetailArt", alt: selected.name }, () => null) : null,
       el("div", { class: "skinDetailPreview" }, createKeyboardNode(selected)),
       el("b", { text: `${"★".repeat(rarityStarCount(selected.rarity))} ${selected.name} · ${RARITIES[selected.rarity].label}` }),
       el("small", { text: selected.desc }),

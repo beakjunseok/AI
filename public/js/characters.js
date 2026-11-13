@@ -2,11 +2,28 @@
 // 캐릭터를 SVG로 그린다(벡터 · 부드러운 외곽선). 표정·액세서리는 팀원별 LOOK 설정으로 조합하고,
 // 포즈(idle/walk/type/sleep/flail)는 SVG 안 CSS 애니메이션으로 움직인다. 결과는 data URI로 캐시.
 // 1:1 패널용 큰 프로필 일러스트(public/img). 없는 팀원은 기존 SVG 캐릭터를 크게 쓴다.
-const PROFILE_ART = { lumi: "img/profile-lumi.webp", moka: "img/profile-moka.webp", bit: "img/profile-bit.webp" };
+// 파일 규칙: img/profile-<id>.webp (없으면 .png). 둘 다 없으면 onMissing으로 대체한다.
+const ART_EXTENSIONS = ["webp", "png"];
+const missingArt = new Set();
+
+// 그림 파일을 확장자 순서대로 시도하고, 다 실패하면 한 번만 기록해 두고 대체 요소로 바꾼다. 같은 그림은 다시 요청하지 않는다.
+function artImage(baseName, attributes, onMissing) {
+  if (missingArt.has(baseName)) return onMissing();
+  const image = el("img", { ...attributes, draggable: "false" });
+  let extensionIndex = 0;
+  image.onerror = () => {
+    extensionIndex += 1;
+    if (extensionIndex < ART_EXTENSIONS.length) { image.src = `img/${baseName}.${ART_EXTENSIONS[extensionIndex]}`; return; }
+    missingArt.add(baseName);
+    const replacement = onMissing();
+    if (replacement) image.replaceWith(replacement); else image.remove();
+  };
+  image.src = `img/${baseName}.${ART_EXTENSIONS[0]}`;
+  return image;
+}
 
 function profileImage(agentId) {
-  if (!PROFILE_ART[agentId]) return spriteImage(agentId, "bigSprite");
-  return el("img", { class: "bigSprite profileArt", src: PROFILE_ART[agentId], alt: getPreset(agentId).name, draggable: "false" });
+  return artImage(`profile-${agentId}`, { class: "bigSprite profileArt", alt: getPreset(agentId).name }, () => spriteImage(agentId, "bigSprite"));
 }
 
 const CHARACTER_LOOKS = {
