@@ -1,4 +1,4 @@
-/* ================= 키보드 스킨 50종 + 하루 한 번 뽑기 ================= */
+/* ================= 키보드 스킨 51종 + 하루 한 번 뽑기 ================= */
 // 스킨은 데이터로 정의하고 CSS 변수로 그린다(스킨마다 CSS 클래스를 만들지 않음).
 // 실제 키보드 문화에서 참고한 것: 배열(풀배열·텐키리스·75%·65%·60%·40% 오쏘리니어·스플릿·매크로패드),
 // 색 테마(레트로 베이지/그레이, 올리브, 네이비+옐로, 파스텔, 터미널 그린, 네온), 재질(알루미늄·투명 PC·나무·황동).
@@ -71,13 +71,14 @@ const KEYBOARD_SKINS = [
   S("rose_quartz", "장미 석영", "epic", "65", "#f7cfe0", "#c98aa8", "#ffffff", "#ffe1ee", { case: "linear-gradient(110deg,#f7cfe0,#fff4f9,#e7a6c4,#fff4f9,#f7cfe0)", fx: ["flow"], glow: "#ffb3d1", desc: "분홍 수정을 통째로 깎았다" }),
   S("aurora", "오로라", "epic", "75", "#0a1420", "#050a12", "#eafff6", "#bff5e2", { case: "linear-gradient(90deg,#0b3d3a,#3dffa8,#7b5cff,#3dffa8,#0b3d3a)", fx: ["flow"], glow: "#3dffa8", desc: "북쪽 밤하늘의 초록 커튼" }),
   S("stealth_ops", "스텔스", "epic", "60", "#0c0d0f", "#040405", "#1a1c20", "#16181b", { glow: "#ff3b3b", fx: ["breathe"], desc: "글자도 없는 새까만 키, 바닥만 붉게" }),
-  // ── 전설 6: 화려함 최대 ──
+  // ── 전설 7: 화려함 최대 ──
   S("hologram", "홀로그램 프리즘", "legend", "65", "#ffffff", "#c9d6ff", "rgba(255,255,255,.95)", "rgba(255,255,255,.8)", { case: "linear-gradient(115deg,#ff9ad5,#a6f6ff,#c8ffb0,#fff3a6,#d3b0ff,#ff9ad5)", fx: ["flow", "float", "hue"], glow: "#d3b0ff", desc: "보는 각도마다 색이 바뀐다" }),
   S("lava_core", "용암 코어", "legend", "tkl", "#2a0a04", "#120402", "#1a0f0c", "#241310", { case: "linear-gradient(90deg,#3a0a00,#ff4d00,#ffd000,#ff4d00,#3a0a00)", fx: ["flow", "flicker"], glow: "#ff5a00", desc: "식은 돌 틈으로 용암이 흐른다" }),
   S("milky_way", "은하수", "legend", "75", "#0a0620", "#04020e", "#e9e4ff", "#b6a8ff", { case: "radial-gradient(circle,#fff 0 .5px,transparent .9px) 0 0/7px 5px,radial-gradient(circle,#ffd6f6 0 .5px,transparent .9px) 3px 2px/9px 6px,linear-gradient(120deg,#0a0620,#3a1c71,#0b2a5c,#0a0620)", fx: ["float", "twinkle"], glow: "#8f7bff", desc: "책상 위에 뜬 작은 우주" }),
   S("glitch_404", "글리치 404", "legend", "65", "#101216", "#050608", "#4de8ff", "#ff5ac8", { case: "repeating-linear-gradient(0deg,#101216 0 2px,#1b2030 2px 3px)", fx: ["glitch"], glow: "#4de8ff", desc: "존재하지 않는 키보드입니다" }),
   S("golden_throne", "황금 왕좌", "legend", "full", "#ffe08a", "#b8860b", "#fff7d6", "#ffe9a3", { case: "linear-gradient(110deg,#b8860b,#ffe08a,#fffbe6,#ffe08a,#b8860b)", fx: ["flow", "sparkle"], glow: "#ffd54a", accent: "#e0115f", desc: "순금에 루비 한 알" }),
-  S("quantum_rainbow", "무지개 양자", "legend", "split", "#14161d", "#07080c", "#ffffff", "#ffffff", { case: RAINBOW, fx: ["flow", "float", "hue"], glow: "#ffffff", keys: "ortho", desc: "모든 색이 동시에 존재한다" })
+  S("quantum_rainbow", "무지개 양자", "legend", "split", "#14161d", "#07080c", "#ffffff", "#ffffff", { case: RAINBOW, fx: ["flow", "float", "hue"], glow: "#ffffff", keys: "ortho", desc: "모든 색이 동시에 존재한다" }),
+  S("brass_overclock", "황동 오버클럭", "legend", "65", "#8a6a3c", "#3a2a18", "#2b2f3a", "#1c1f28", { case: "linear-gradient(110deg,#5a4024,#c9a25e,#7a5a34,#d8b878,#5a4024)", fx: ["flow", "breathe"], glow: "#a970ff", accent: "#4de8ff", desc: "톱니바퀴와 네온이 같이 돈다" })
 ];
 const findSkin = skinId => KEYBOARD_SKINS.find(skin => skin.id === skinId);
 // 전설 키보드 카드 일러스트: img/kb-<skinId>.webp(또는 .png). 그림이 있으면 뽑기 공개·도감 상세에서 크게 보여준다.
@@ -428,7 +429,7 @@ function playGachaMultiSequence(results) {
 }
 
 /* ---------- 도감 (따로) ---------- */
-// 등급 필터, 선택한 스킨 상세 + 팀원 책상에 장착/해제, 50칸 그리드.
+// 등급 필터, 선택한 스킨 상세 + 팀원 책상에 장착/해제, 51칸 그리드.
 function openCollection(selectedSkinId = null, rarityFilter = "all") {
   const zoom = document.getElementById("zoom");
   const gacha = state.gacha;

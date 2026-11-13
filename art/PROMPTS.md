@@ -26,3 +26,5 @@ chibi anime bust portrait of a shy young sound designer, shaggy dark charcoal ha
 | kb-glitch_404.png | 글리치 404 | 65% keyboard in dark gunmetal with cyan and magenta glitch effect, RGB channel split, scanlines, pixel displacement, partially dissolving into data blocks |
 | kb-golden_throne.png | 황금 왕좌 | full-size royal keyboard made of polished gold with ornate engravings, cream white keycaps, one large ruby gemstone (#e0115f) set in the case, golden sparkles, regal |
 | kb-quantum_rainbow.png | 무지개 양자 | split ergonomic ortholinear keyboard, dark case with flowing full-spectrum rainbow light edges, white keycaps, quantum particle trails and overlapping ghost copies |
+
+> 2026-11-14: 8장 + 추가 전설 `kb-brass_overclock`(황동 오버클럭) 모두 Gemini 앱으로 생성해 반영 완료.
