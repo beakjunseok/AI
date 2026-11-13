@@ -15,8 +15,8 @@ const RARITIES = {
 };
 const RARITY_ORDER = ["common", "uncommon", "rare", "epic", "legend"];
 const GACHA_PITY_PULLS = 7;
-const GACHA_SINGLE_COST = 30;  // 코인 1회
-const GACHA_TEN_COST = 270;    // 코인 10연속(1장 값 10% 할인 + 희귀 이상 1개 확정) // 희귀 이상이 7번 연속 안 나오면 다음 뽑기는 희귀 이상 확정
+const GACHA_SINGLE_COST = 300;  // 코인 1회
+const GACHA_TEN_COST = 3000;    // 코인 10연속(희귀 이상 1개 확정) // 희귀 이상이 7번 연속 안 나오면 다음 뽑기는 희귀 이상 확정
 const KEYBOARD_LAYOUT_WIDTH = { macro: 16, "40": 26, "60": 30, "65": 32, "75": 34, tkl: 38, split: 40, full: 44 };
 
 const S = (id, name, rarity, layout, caseTop, caseBottom, keyTop, keyBottom, options = {}) => ({ id, name, rarity, layout, caseTop, caseBottom, keyTop, keyBottom, ...options });
@@ -161,11 +161,21 @@ function renderGachaPill() {
   pill.classList.toggle("ready", canPullToday());
 }
 
+// 이 스킨을 지금 몇 명이 쓰고 있는지.
+const equippedCount = skinId => Object.values(state.gacha.equipped).filter(id => id === skinId).length;
+
+// 뽑은 개수만큼만 장착할 수 있다(×2면 두 명까지). 모자라면 false.
 function equipSkin(agentId, skinId) {
+  if (skinId && state.gacha.equipped[agentId] !== skinId && equippedCount(skinId) >= (state.gacha.owned[skinId] || 0)) {
+    playSound("error");
+    showToast(`이 스킨은 ${state.gacha.owned[skinId] || 0}개뿐이라 ${state.gacha.owned[skinId] || 0}명까지만 쓸 수 있어요. 더 뽑거나 다른 팀원에게서 빼 주세요`);
+    return false;
+  }
   if (skinId) state.gacha.equipped[agentId] = skinId; else delete state.gacha.equipped[agentId];
   saveState();
   renderOffice();
   playSound("sit");
+  return true;
 }
 
 function timeUntilMidnight() {
@@ -445,12 +455,14 @@ function openCollection(selectedSkinId = null, rarityFilter = "all") {
       el("div", { class: "skinDetailPreview" }, createKeyboardNode(selected)),
       el("b", { text: `${"★".repeat(rarityStarCount(selected.rarity))} ${selected.name} · ${RARITIES[selected.rarity].label}` }),
       el("small", { text: selected.desc }),
+      el("small", { class: "equipCount", text: `장착 ${equippedCount(selected.id)} / 보유 ${gacha.owned[selected.id]}` }),
       el("div", { class: "equipRow" }, state.agents.map(agent => {
         const isOn = gacha.equipped[agent.id] === selected.id;
-        return el("button", { type: "button", class: "kindChip" + (isOn ? " on" : ""), text: `${getPreset(agent.id).name}${isOn ? " ✓" : ""}`,
+        const isFull = !isOn && equippedCount(selected.id) >= gacha.owned[selected.id];
+        return el("button", { type: "button", class: "kindChip" + (isOn ? " on" : "") + (isFull ? " full" : ""), text: `${getPreset(agent.id).name}${isOn ? " ✓" : ""}`,
           onclick: () => { equipSkin(agent.id, isOn ? null : selected.id); openCollection(selected.id, rarityFilter); } });
       })),
-      el("small", { class: "gachaNote", text: "팀원 이름을 누르면 그 책상에 놓여요. 다시 누르면 기본 키보드로." }));
+      el("small", { class: "gachaNote", text: "뽑은 개수만큼 팀원에게 줄 수 있어요. 이름을 누르면 장착, 다시 누르면 해제." }));
     detail.style.setProperty("--rarity", RARITIES[selected.rarity].color);
   }
   zoom.replaceChildren(el("div", { class: "zoomCard chunky gachaCard collectionCard", onclick: event => event.stopPropagation() },

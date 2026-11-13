@@ -57,6 +57,8 @@ header h1{cursor:pointer}
 .keyboard.kb-dubu{width:44px;background:repeating-linear-gradient(90deg,#8a7f6d 0 3px,transparent 3px 4.5px) 2px 1.5px/30px 2px no-repeat,repeating-linear-gradient(90deg,#8a7f6d 0 3px,transparent 3px 4.5px) 3px 4.5px/28px 2px no-repeat,repeating-linear-gradient(90deg,#6f6556 0 2.5px,transparent 2.5px 4px) 34px 1.5px/9px 5px no-repeat,linear-gradient(#e8dfcc 0 7px,#a99d86 7px);box-shadow:0 1px 0 #0b0e12,inset 0 0 0 1px #8a7f6d}
 .keyboard.kb-sol{height:10px;border-radius:1px;background:repeating-linear-gradient(90deg,#11151a 0 2px,transparent 2px 4.5px,#11151a 4.5px 6.5px,transparent 6.5px 9px,transparent 9px 13.5px) 2px 0/34px 5px no-repeat,repeating-linear-gradient(90deg,#f6f6f2 0 4px,#9aa0a6 4px 4.5px) 0 0/100% 8px no-repeat,linear-gradient(#f6f6f2 0 8px,#3a2a24 8px);box-shadow:0 1px 0 #0b0e12,inset 0 0 0 1px #3a2a24}
 .slot.working .keyboard::after{opacity:1;animation:keyTap .42s steps(3) infinite}
+/* 자리 비움(심부름·산책 중)이면 키보드가 움직이지 않는다 */
+.slot.working:has(.agent.away) .keyboard::after{opacity:0;animation:none}
 @keyframes keyTap{0%{background-position:0 0,4px 3px}33%{background-position:9px 0,-5px 3px}66%{background-position:-4px 0,10px 3px}100%{background-position:5px 0,0 3px}}
 .monitorStand{position:absolute;right:20px;bottom:calc(100% - 1px);width:6px;height:9px;background:#3c4652;z-index:3;pointer-events:none}
 .monitorStand::after{content:"";position:absolute;left:-6px;bottom:0;width:18px;height:3px;background:#4a5563}

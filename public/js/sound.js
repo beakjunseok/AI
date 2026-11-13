@@ -4,7 +4,7 @@
 // 같은 소리가 연달아 터지지 않게 종류별 최소 간격을 둔다. 소리 1회당 O(음 개수)
 
 const SOUND_MASTER_VOLUME = 0.3;
-const SOUND_MIN_GAP_MS = { typing: 70, step: 180, keyClick: 45, ui: 40, gachaFlip: 60, default: 80 };
+const SOUND_MIN_GAP_MS = { typing: 70, step: 180, keyClick: 0, ui: 40, gachaFlip: 60, default: 80 };
 const SOUND_UNLOCK_GRACE_MS = 400;
 
 let audioContext = null;
@@ -166,7 +166,7 @@ const SOUND_RECIPES = {
   ui: context => playTone(context, { frequency: 1800, endFrequency: 1500, duration: 0.025, volume: 0.06 }),
   toggleOn: context => { playTone(context, { frequency: 660, duration: 0.06, volume: 0.16 }); playTone(context, { frequency: 990, startOffset: 0.06, duration: 0.08, volume: 0.16 }); },
   toggleOff: context => { playTone(context, { frequency: 990, duration: 0.06, volume: 0.14 }); playTone(context, { frequency: 620, startOffset: 0.06, duration: 0.09, volume: 0.14 }); },
-  keyClick: context => playNoise(context, { duration: 0.012 + Math.random() * 0.01, volume: 0.03 + Math.random() * 0.02, filterType: "bandpass", frequency: 2500 + Math.random() * 2500, q: 3 }),
+  keyClick: context => playNoise(context, { duration: 0.008 + Math.random() * 0.006, volume: 0.007 + Math.random() * 0.006, filterType: "bandpass", frequency: 3000 + Math.random() * 3000, q: 4 }),
   brew: context => {
     [0, 0.18, 0.4, 0.62].forEach(startOffset => playNoise(context, { startOffset, duration: 0.16, volume: 0.07, filterType: "lowpass", frequency: 700 + Math.random() * 300, endFrequency: 300 }));
     playTone(context, { frequency: NOTE.G6, startOffset: 0.9, duration: 0.25, volume: 0.1 });

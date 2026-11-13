@@ -48,6 +48,7 @@ function startApp() {
   scheduleGlitch();
   renderWindowAndClock();
   setInterval(tickOffice, TICK_MS);
+  setInterval(typingSoundTick, TYPING_TICK_MS);
   setInterval(blinkLoop, 700);
   setInterval(motionTick, MOTION_TICK_MS);
   setInterval(errandTick, MOTION_TICK_MS);

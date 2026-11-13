@@ -40,8 +40,14 @@ function renderPanel() {
   const draft = previousInput ? previousInput.value : "";
   const hadFocus = previousInput && document.activeElement === previousInput;
 
-  if (panelRoomMode) panel.replaceChildren(renderRoomHead(), el("div", { class: "panelBody" }, renderChatView(null)));
-  else panel.replaceChildren(...renderAgentHead(panelAgentId), el("div", { class: "panelBody" }, renderChatView(panelAgentId), renderInfoView(panelAgentId)));
+  const renderKey = `${panelRoomMode}:${panelAgentId}:${panelTab}`;
+  const newChildren = panelRoomMode
+    ? [renderRoomHead(), el("div", { class: "panelBody" }, renderChatView(null))]
+    : [...renderAgentHead(panelAgentId), el("div", { class: "panelBody" }, renderChatView(panelAgentId), renderInfoView(panelAgentId))];
+  // 입력 중이면(입력칸에 포커스) 입력 폼은 그대로 두고 나머지만 바꾼다 → 글자·커서 위치·한글 조합이 끊기지 않음.
+  const oldForm = hadFocus && panel.dataset.renderKey === renderKey ? previousInput.closest("form") : null;
+  if (!(oldForm && replaceKeepingNode(panel, newChildren, oldForm, newChildren.map(child => child.querySelector?.("form.chatForm")).find(Boolean)))) panel.replaceChildren(...newChildren);
+  panel.dataset.renderKey = renderKey;
 
   updatePanelLive();
   const thread = document.getElementById("thread");
@@ -50,8 +56,31 @@ function renderPanel() {
     else { thread.scrollTop = threadSavedScrollTop; showJumpButton(); }
   }
   const input = document.getElementById("chatInput");
-  if (input && draft) input.value = draft;
-  if (input && hadFocus) input.focus();
+  if (input && input !== previousInput) {
+    if (draft) input.value = draft;
+    if (hadFocus) input.focus();
+  }
+}
+
+// container의 자식들을 newChildren으로 바꾸되 keepNode(살아 있는 입력 폼)가 든 갈래는 재귀로 내려가 keepNode 자체는 그대로 둔다.
+// 구조가 다르면 false(호출한 쪽이 통째로 교체). keepNode에 닿으면 버튼 상태·문구만 새 폼에서 복사. O(트리 깊이 × 형제 수)
+function replaceKeepingNode(container, newChildren, keepNode, newKeepNode) {
+  if (!newKeepNode) return false;
+  const oldChildren = [...container.children];
+  const keepIndex = oldChildren.findIndex(child => child.contains(keepNode));
+  if (keepIndex < 0 || oldChildren.length !== newChildren.length || !newChildren[keepIndex]?.contains?.(newKeepNode)) return false;
+  const oldKept = oldChildren[keepIndex];
+  const newKept = newChildren[keepIndex];
+  if (oldKept !== keepNode && !replaceKeepingNode(oldKept, [...newKept.children], keepNode, newKeepNode)) return false;
+  oldChildren.forEach((child, index) => { if (index !== keepIndex) child.replaceWith(newChildren[index]); });
+  if (oldKept === keepNode) {
+    const oldButtons = keepNode.querySelectorAll("button");
+    const newButtons = newKeepNode.querySelectorAll("button");
+    oldButtons.forEach((button, index) => { if (newButtons[index]) { button.disabled = newButtons[index].disabled; button.textContent = newButtons[index].textContent; } });
+    const oldNote = keepNode.querySelector(".modelNote"), newNote = newKeepNode.querySelector(".modelNote");
+    if (oldNote && newNote) oldNote.textContent = newNote.textContent;
+  }
+  return true;
 }
 
 function renderRoomHead() {

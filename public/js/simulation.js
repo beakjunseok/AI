@@ -113,7 +113,6 @@ function tickOffice() {
   });
   maybePairChat();
   autoFeedSleepers();
-  playDeskTyping();
   updateDynamicViews();
   saveState();
 }
@@ -142,12 +141,25 @@ function syncAgentPose(agent, isWorking) {
 }
 
 // 구조는 그대로 두고 바·모니터·표정·포즈·말풍선만 갱신 → 드래그 중 깜빡임 없음. O(팀원 수)
-// 보고 있는 사무실에서 일하는 팀원 수만큼 키보드 소리를 틱 사이사이에 흩뿌린다.
-function playDeskTyping() {
-  const typingCount = document.querySelectorAll("#deskGrid .slot.working").length;
-  for (let index = 0; index < typingCount; index += 1) {
-    if (Math.random() < 0.6) setTimeout(() => playSound("keyClick"), Math.random() * TICK_MS);
-  }
+// 타건음: 책상에 앉아 있는 팀원마다 독립된 타자 리듬(단어 3~8타 빠르게 → 잠깐 쉼)으로 아주 작게 친다.
+// 앉은 사람이 늘면 그만큼 소리가 겹쳐 빈도가 비례해 늘어난다. 자는 팀원·자리 비운 팀원은 안 친다. 25ms마다 O(팀원 수)
+const TYPING_TICK_MS = 25;
+const typistRhythm = {};
+
+function typingSoundTick() {
+  if (!state.sound || document.hidden || !audioContext) return;
+  const now = performance.now();
+  const seated = [...document.querySelectorAll("#deskGrid .slot:not(.empty):not(.sleeping)")]
+    .filter(slot => slot.querySelector(".agent:not(.away)")).map(slot => slot.dataset.agentId);
+  Object.keys(typistRhythm).forEach(agentId => { if (!seated.includes(agentId)) delete typistRhythm[agentId]; });
+  seated.forEach(agentId => {
+    const rhythm = typistRhythm[agentId] || (typistRhythm[agentId] = { nextAt: now + Math.random() * 600, keysLeft: 0 });
+    if (now < rhythm.nextAt) return;
+    playSound("keyClick");
+    if (rhythm.keysLeft <= 0) rhythm.keysLeft = 3 + Math.floor(Math.random() * 6);
+    rhythm.keysLeft -= 1;
+    rhythm.nextAt = now + (rhythm.keysLeft > 0 ? 45 + Math.random() * 55 : 160 + Math.random() * 380);
+  });
 }
 
 function updateDynamicViews() {
