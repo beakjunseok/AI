@@ -58,4 +58,4 @@ function startApp() {
   connectServer().then(() => { if (serverLocked) setTimeout(openAccessPrompt, 2600); });
 }
 
-startApp();
+startWithSync();

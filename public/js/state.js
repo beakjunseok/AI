@@ -24,10 +24,14 @@ function createInitialState() {
   return initial;
 }
 
-// 저장본을 읽고, 빠진 필드는 기본값으로 채운다. 손상되면 null → 새로 시작.
+// 이 브라우저의 저장본을 읽는다. 손상되면 null → 새로 시작.
 function loadState() {
+  try { return normalizeState(JSON.parse(localStorage.getItem(STORAGE_KEY) || "null")); } catch (error) { return null; }
+}
+
+// 저장본(이 기기 것이든 서버에서 받은 것이든)의 빠진 필드를 기본값으로 채우고 예전 형식을 고친다. 쓸 수 없으면 null.
+function normalizeState(parsed) {
   try {
-    const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
     if (!parsed || !Array.isArray(parsed.projects) || !parsed.projects.length || !Array.isArray(parsed.agents)) return null;
     parsed.agents = AGENT_PRESETS.map(preset => Object.assign(createAgentState(preset), parsed.agents.find(agent => agent.id === preset.id) || {}));
     parsed.coins = Number.isFinite(parsed.coins) ? parsed.coins : 20;
@@ -70,6 +74,7 @@ function loadState() {
 
 function saveState() {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (error) { /* 저장 불가 환경 */ }
+  if (typeof noteStateSaved === "function") noteStateSaved();
 }
 
 const getPreset = agentId => AGENT_PRESETS.find(preset => preset.id === agentId);

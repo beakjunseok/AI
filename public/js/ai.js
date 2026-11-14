@@ -141,7 +141,7 @@ function openAccessPrompt() {
     event.preventDefault();
     saveAccessCode(input.value.trim());
     const unlocked = await connectServer();
-    if (unlocked) { zoom.classList.remove("show"); playSound("granted"); showToast("🔓 잠금 해제! 진짜 AI가 연결됐어요"); }
+    if (unlocked) { zoom.classList.remove("show"); playSound("granted"); showToast("🔓 잠금 해제! 진짜 AI가 연결됐어요"); if (typeof syncAfterUnlock === "function") syncAfterUnlock(); }
     else { playSound("error"); showToast("코드가 맞지 않아요"); }
   });
   zoom.replaceChildren(el("div", { class: "zoomCard chunky", onclick: event => event.stopPropagation() },

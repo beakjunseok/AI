@@ -1,1 +1,10 @@
-{ "name": "ai-office", "private": true, "engines": { "node": ">=20" } }
+{
+  "name": "ai-office",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@vercel/blob": "^2.9.0"
+  }
+}
