@@ -11,19 +11,22 @@ const SYNC_PULL_MIN_GAP_MS = 60 * 1000;
 const SYNC_STARTUP_TIMEOUT_MS = 3500;
 const SYNC_KEEPALIVE_LIMIT = 60000;
 const DEVICE_ONLY_FIELDS = ["sound", "bgm"];
+// 서버에도 올리지만, 다른 기기 것을 받을 때는 이 기기에서 쓰던 걸 유지(쓰던 프롬프트 초안이 날아가지 않게).
+const KEEP_LOCAL_FIELDS = ["promptHelper"];
+const normalizeEtag = tag => String(tag || "").replace(/^W\//, "").replace(/"/g, "");
 
-const sync = { ...readSyncMeta(), lastPushedHash: "", lastPushAt: 0, lastPullAt: 0, busy: false, reloading: false, appStarted: false, soonTimer: null, gachaSignature: "", pushedGachaSignature: "" };
+const sync = { ...readSyncMeta(), lastPushedHash: "", lastPushAt: 0, lastPullAt: 0, busy: false, reloading: false, pushPromise: null, deferredRemote: null, deferTimer: null, appStarted: false, soonTimer: null, gachaSignature: "", pushedGachaSignature: "" };
 
 // etag: 마지막으로 맞춘 서버본 버전. pending: 합친 결과를 새로고침 뒤 올려야 함.
 function readSyncMeta() {
   try {
     const meta = JSON.parse(localStorage.getItem(SYNC_STORAGE_KEY) || "{}");
-    return { etag: meta.etag || "", pending: meta.pending === true };
+    return { etag: normalizeEtag(meta.etag), pending: meta.pending === true };
   } catch (error) { return { etag: "", pending: false }; }
 }
 
 function writeSyncEtag(etag, pending = false) {
-  sync.etag = etag || "";
+  sync.etag = normalizeEtag(etag);
   sync.pending = pending;
   try { localStorage.setItem(SYNC_STORAGE_KEY, JSON.stringify({ etag: sync.etag, pending })); } catch (error) { /* 저장 불가 */ }
 }
@@ -60,12 +63,38 @@ function mergeLocalProgress(remote, local, isFirstLink) {
   return remote;
 }
 
+// 사용자가 뭔가 입력 중이거나 창을 열어 둔 상태인지. 이때는 새로고침을 미룬다.
+function isUserEditing() {
+  const active = document.activeElement;
+  const typing = active && (active.tagName === "TEXTAREA" || active.tagName === "INPUT" || active.isContentEditable);
+  return Boolean(typing || document.getElementById("zoom")?.classList.contains("show"));
+}
+
+// 앱 실행 중에 받은 다른 기기의 변경: 서버본이 방금 내가 올린 것과 같으면 버전만 맞추고 끝.
+// 다르면 입력이 끝날 때까지 기다렸다가(2초 간격 확인) 합쳐서 새로고침한다.
+function adoptRemoteWhenIdle(remoteState, etag, options) {
+  const remoteCopy = { ...remoteState };
+  DEVICE_ONLY_FIELDS.forEach(field => delete remoteCopy[field]);
+  if (quickHash(JSON.stringify(remoteCopy)) === sync.lastPushedHash) { writeSyncEtag(etag, sync.pending); return; }
+  sync.deferredRemote = { remoteState, etag, options };
+  if (sync.deferTimer) return;
+  const tryAdopt = () => {
+    if (isUserEditing()) { sync.deferTimer = setTimeout(tryAdopt, 2000); return; }
+    sync.deferTimer = null;
+    const deferred = sync.deferredRemote;
+    sync.deferredRemote = null;
+    if (deferred) adoptRemoteState(deferred.remoteState, deferred.etag, deferred.options);
+  };
+  tryAdopt();
+}
+
 // 서버본을 이 기기 상태로 들인다. 앱이 이미 돌고 있으면 저장 후 새로고침(걷는 캐릭터·타이머가 옛 상태를 쥐고 있으므로).
 function adoptRemoteState(remoteState, etag, { isFirstLink = false } = {}) {
   const remoteSignature = gachaSignatureOf(remoteState);
   const merged = normalizeState(mergeLocalProgress(structuredClone(remoteState), state, isFirstLink));
   if (!merged) return false;
   DEVICE_ONLY_FIELDS.forEach(field => { merged[field] = state[field]; });
+  KEEP_LOCAL_FIELDS.forEach(field => { if (state[field]) merged[field] = state[field]; });
   const gainedProgress = isFirstLink || gachaSignatureOf(merged) !== remoteSignature;
   writeSyncEtag(etag, gainedProgress);
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(merged)); } catch (error) { /* 저장 불가 */ }
@@ -79,21 +108,28 @@ function adoptRemoteState(remoteState, etag, { isFirstLink = false } = {}) {
 async function pullState() {
   if (!canSync()) return "skip";
   sync.lastPullAt = Date.now();
+  if (sync.pushPromise) await sync.pushPromise.catch(() => {});   // 방금 보낸 저장의 응답(새 etag)을 먼저 받는다
   try {
     const response = await fetch("/api/state", { cache: "no-store", headers: { ...syncHeaders(), "x-sync-etag": sync.etag } });
     if (response.status === 404) { writeSyncEtag(""); sync.lastPushedHash = ""; await pushState("first"); return "uploaded"; }
     if (!response.ok) return "error";
     const data = await response.json();
-    if (data.unchanged || (data.etag && data.etag === sync.etag)) return "same";
+    if (data.unchanged || (data.etag && normalizeEtag(data.etag) === sync.etag)) return "same";
     if (!data.state) return "error";
-    adoptRemoteState(data.state, data.etag, { isFirstLink: !sync.etag });
+    if (sync.appStarted) adoptRemoteWhenIdle(data.state, data.etag, { isFirstLink: !sync.etag });
+    else adoptRemoteState(data.state, data.etag, { isFirstLink: !sync.etag });
     return "adopted";
   } catch (error) { return "error"; }
 }
 
 // 내용이 마지막 업로드와 다를 때만 올린다. 다른 기기가 먼저 올렸으면(409) 서버본에 뽑기 결과를 합쳐 받고, 합친 걸 다시 올린다.
-async function pushState(reason) {
-  if (!canSync() || sync.busy || sync.reloading) return;
+function pushState(reason) {
+  if (!canSync() || sync.busy || sync.reloading) return Promise.resolve();
+  sync.pushPromise = pushStateNow(reason).finally(() => { sync.pushPromise = null; });
+  return sync.pushPromise;
+}
+
+async function pushStateNow(reason) {
   const text = stateTextForSync();
   const hash = quickHash(text);
   const gachaAtPush = gachaSignatureOf(state);
@@ -109,7 +145,7 @@ async function pushState(reason) {
       sync.pushedGachaSignature = gachaAtPush;
     } else if (response.status === 409) {
       const data = await response.json();
-      if (data.state) { sync.busy = false; adoptRemoteState(data.state, data.etag, { isFirstLink: !sync.etag }); }
+      if (data.state) { sync.busy = false; adoptRemoteWhenIdle(data.state, data.etag, { isFirstLink: !sync.etag }); }
     }
   } catch (error) { /* 오프라인 등: 다음 기회에 다시 */ }
   sync.busy = false;

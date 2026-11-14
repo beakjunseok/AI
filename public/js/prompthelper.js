@@ -16,6 +16,13 @@ const PROMPT_WRITE_TOKENS = 2000;
 const LEAVE_IT_TO_AI = "알아서 정해줘";
 
 let promptHelperBusy = false;
+let promptSaveTimer = null;
+
+// 타이핑 중엔 0.8초 쉬면 저장. 혹시 화면이 새로고침돼도 쓰던 글이 남는다.
+function savePromptHelperSoon() {
+  clearTimeout(promptSaveTimer);
+  promptSaveTimer = setTimeout(saveState, 800);
+}
 
 function promptHelperState() {
   state.promptHelper ||= { draft: "", target: "chat", analysis: null, answers: {}, result: null };
@@ -155,8 +162,7 @@ async function writePrompt(button, feedback = "") {
 function renderDraftSection(helper) {
   const textarea = el("textarea", { class: "promptDraft", rows: "7", placeholder: "AI에게 보낼 프롬프트 초안을 적거나 붙여넣으세요.\n예) 우리 동아리 홍보 포스터 문구 써줘" });
   textarea.value = helper.draft;
-  textarea.addEventListener("input", () => { helper.draft = textarea.value; });
-  textarea.addEventListener("change", saveState);
+  textarea.addEventListener("input", () => { helper.draft = textarea.value; savePromptHelperSoon(); });
   const targetChips = el("div", { class: "promptChips" }, PROMPT_TARGETS.map(target => el("button", {
     type: "button", class: "promptChip" + (helper.target === target.id ? " picked" : ""), text: target.label,
     onclick: () => { helper.target = target.id; saveState(); renderPromptHelper(); }
@@ -179,7 +185,7 @@ function renderQuestion(helper, question) {
   }));
   const custom = el("input", { class: "promptCustom", type: "text", placeholder: "직접 입력 (선택)" });
   custom.value = answer.text || "";
-  custom.addEventListener("input", () => { answer.text = custom.value; });
+  custom.addEventListener("input", () => { answer.text = custom.value; savePromptHelperSoon(); });
   return el("div", { class: "promptQuestion" }, el("b", { text: question.question }), el("div", { class: "promptChips" }, options), custom);
 }
 
@@ -203,8 +209,7 @@ function renderResultSection(helper) {
   if (!result) return null;
   const output = el("textarea", { class: "promptResult", rows: "10" });
   output.value = result.prompt;
-  output.addEventListener("input", () => { result.prompt = output.value; });
-  output.addEventListener("change", saveState);
+  output.addEventListener("input", () => { result.prompt = output.value; savePromptHelperSoon(); });
   const feedback = el("input", { class: "promptCustom", type: "text", placeholder: "더 고칠 점 (예: 더 짧게, 표로 받게, 영어로)" });
   const refineButton = el("button", { class: "btn soft", type: "button", text: "🔁 다시 다듬기" });
   refineButton.addEventListener("click", () => {
@@ -227,8 +232,9 @@ function renderPromptHelper() {
   const reset = el("button", { class: "promptReset", type: "button", text: "새로 시작", onclick: () => {
     Object.assign(helper, { draft: "", analysis: null, answers: {}, result: null }); saveState(); renderPromptHelper();
   } });
-  const card = el("div", { class: "zoomCard chunky wide promptCard", onclick: event => event.stopPropagation() },
-    el("div", { class: "promptHead" }, el("h3", { text: "✨ 프롬프트 도우미" }), reset),
+  const close = el("button", { class: "promptClose", type: "button", title: "닫기", text: "✕", onclick: () => { saveState(); zoom.classList.remove("show"); } });
+  const card = el("div", { class: "zoomCard chunky wide promptCard", "data-sticky": true, onclick: event => event.stopPropagation() },
+    el("div", { class: "promptHead" }, el("h3", { text: "✨ 프롬프트 도우미" }), el("div", { class: "promptHeadButtons" }, reset, close)),
     el("small", { class: "promptIntro", text: "초안을 점검해 빠진 부분을 물어보고, 답을 반영해 완성 프롬프트를 써 드려요." }),
     renderDraftSection(helper), renderAnalysisSection(helper), renderResultSection(helper));
   const scrollTop = zoom.querySelector(".promptCard")?.scrollTop || 0;

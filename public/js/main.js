@@ -1,8 +1,22 @@
 /* ================= 초기화 ================= */
+// 확대 창 바깥(어두운 배경)을 눌렀을 때만 닫는다. 글자를 드래그하다 바깥에서 손을 떼는 경우는 닫지 않음.
+// 프롬프트 도우미처럼 입력이 많은 창(data-sticky)은 바깥을 눌러도 안 닫히고 ✕로만 닫는다.
+function bindZoomBackdrop() {
+  const zoom = document.getElementById("zoom");
+  let pressStartedOnBackdrop = false;
+  zoom.addEventListener("pointerdown", event => { pressStartedOnBackdrop = event.target === zoom; });
+  zoom.addEventListener("click", event => {
+    const isBackdropTap = event.target === zoom && pressStartedOnBackdrop;
+    pressStartedOnBackdrop = false;
+    if (!isBackdropTap || zoom.querySelector("[data-sticky]")) return;
+    zoom.classList.remove("show");
+  });
+}
+
 function bindStaticEvents() {
   document.querySelector("header h1").addEventListener("click", () => openRenamePrompt("app"));
   document.getElementById("scrim").addEventListener("click", closePanel);
-  document.getElementById("zoom").addEventListener("click", () => document.getElementById("zoom").classList.remove("show"));
+  bindZoomBackdrop();
   document.getElementById("trophyPill").addEventListener("click", openAchievements);
   document.getElementById("gachaPill").addEventListener("click", () => openGacha());
   renderGachaPill();

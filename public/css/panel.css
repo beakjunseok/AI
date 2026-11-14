@@ -96,6 +96,8 @@ body.panelOpen #panel{transform:none}
 .promptCard{display:flex;flex-direction:column;gap:10px}
 .promptHead{display:flex;align-items:center;justify-content:space-between}
 .promptHead h3{margin:0}
+.promptHeadButtons{display:flex;gap:6px;align-items:center}
+.promptClose{background:none;border:1px solid var(--line);color:inherit;width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:14px}
 .promptReset{background:none;border:1px solid var(--line);color:var(--sub);font:11px var(--mono);padding:3px 8px;border-radius:6px;cursor:pointer}
 .promptIntro{color:var(--sub);font-size:12px}
 .promptStep{display:flex;flex-direction:column;gap:7px;padding-top:10px;border-top:1px dashed var(--line)}
