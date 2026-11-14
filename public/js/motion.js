@@ -457,7 +457,9 @@ function renderOffice() {
         el("button", { class: "kindBadge", type: "button", title: "눌러서 종류·주소 바꾸기", text: `${projectKindOf(project).icon} ${projectKindOf(project).label}`, onclick: () => openRenamePrompt("project", project.id) }),
         ...projectLinkButtons(project)),
       el("small", { id: "officeStats" })),
-    ...(state.projects.length > 1 ? [el("button", { class: "btn soft", text: "archive", onclick: () => closeProject(project.id) })] : [])
+    el("div", { class: "officeHeadActions" },
+      el("button", { class: "btn promptHelperBtn", type: "button", title: "프롬프트 도우미: 내가 쓴 프롬프트를 점검하고 다듬어 줘요", onclick: openPromptHelper }, "✨ 프롬프트", el("span", { class: "wideOnly", text: " 도우미" })),
+      ...(state.projects.length > 1 ? [el("button", { class: "btn soft", text: "archive", onclick: () => closeProject(project.id) })] : []))
   );
   const [neonText, neonIcon] = projectKindOf(project).neon;
   document.querySelector("#office .neonSign").replaceChildren(neonText, el("span", { text: neonIcon }));
