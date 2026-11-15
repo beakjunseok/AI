@@ -93,8 +93,15 @@ async function streamAgentMessage(agentId, { prompt, simulate, extra = {}, maxTo
   if (panelAgentId) renderPanel();
   try {
     // 담당 → Claude → Gemini 순서로 시도. 한도 초과·키 오류·네트워크 오류면 다음 엔진으로 넘어간다.
-    const chain = fallbackChain(agent.model).filter(isProviderAvailable);
     let usedEngine = null, lastError = null;
+    for (let pass = 0; pass < 2 && !usedEngine; pass += 1) {
+    const waitMs = cooldownWaitMs(agent.model);
+    if (waitMs > 0) {
+      message.text = `⏳ AI 분당 한도에 걸려서 ${Math.ceil(waitMs / 1000)}초 기다렸다 이어서 할게요…`;
+      updateMessageNode(message);
+      await new Promise(resolve => setTimeout(resolve, waitMs + 300));
+    }
+    const chain = fallbackChain(agent.model).filter(isProviderAvailable);
     for (const engine of chain) {
       try {
         recordUsage(engine);
@@ -106,15 +113,17 @@ async function streamAgentMessage(agentId, { prompt, simulate, extra = {}, maxTo
         break;
       } catch (error) {
         lastError = error;
-        if (error?.code === "rate_limited") markExhausted(engine);
+        if (error?.code === "rate_limited") handleRateLimit(engine, error);
         else if (error?.code === "not_configured") serverProviders.delete(engine);
         else if (error?.code === "locked") { serverProviders.clear(); serverLocked = true; document.getElementById("lockPill").hidden = false; }
       }
     }
+    if (!usedEngine && !cooldownWaitMs(agent.model)) break;   // 분당 한도로 쉬는 엔진이 없으면 다시 시도할 이유가 없음
+    }
     if (!usedEngine) {
       await new Promise(resolve => setTimeout(resolve, 600 + Math.random() * 600));
       message.engine = "simulation";
-      message.text = simulate() + (lastError ? `\n(연결 실패 → 시뮬레이션: ${lastError.message})` : "");
+      message.text = simulate() + `\n(연결 실패 → 시뮬레이션: ${lastError ? lastError.message : aiUnavailableReason()})`;
     }
     message.ok = true;
     playSound("receive");

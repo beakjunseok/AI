@@ -33,16 +33,23 @@ const promptTargetOf = id => PROMPT_TARGETS.find(target => target.id === id) || 
 
 // 사용할 수 있는 실제 AI 엔진(대타 순서대로). 없으면 null → 접속 코드 안내.
 function promptHelperEngine() {
-  return FALLBACK_ORDER.map(pickEngine).find(Boolean) || null;
+  return FALLBACK_ORDER.map(pickEngine).find(Boolean) || (cooldownWaitMs(FALLBACK_ORDER[0]) ? FALLBACK_ORDER[0] : null);
 }
 
 // 한 엔진이 실패하거나(한도·서버 오류·시간 초과) 빈 답을 주면 다음 엔진으로 넘겨 다시 시도한다.
 async function askPromptAi(prompt, maxTokens) {
   const tried = new Set();
   let lastError = null;
-  for (let attempt = 0; attempt < FALLBACK_ORDER.length; attempt += 1) {
-    const engine = FALLBACK_ORDER.map(pickEngine).find(name => name && !tried.has(name));
-    if (!engine) break;
+  for (let attempt = 0; attempt < FALLBACK_ORDER.length + 2; attempt += 1) {
+    let engine = FALLBACK_ORDER.map(pickEngine).find(name => name && !tried.has(name));
+    if (!engine) {
+      const waitMs = cooldownWaitMs(FALLBACK_ORDER[0]);
+      if (!waitMs || attempt >= FALLBACK_ORDER.length + 1) break;
+      await new Promise(resolve => setTimeout(resolve, waitMs + 300));   // 분당 한도면 잠깐 기다렸다 다시
+      tried.clear();
+      engine = FALLBACK_ORDER.map(pickEngine).find(Boolean);
+      if (!engine) break;
+    }
     tried.add(engine);
     try {
       recordUsage(engine);
@@ -51,11 +58,11 @@ async function askPromptAi(prompt, maxTokens) {
       lastError = Object.assign(new Error(`${engineLabel(engine)}가 빈 답을 줬어요`), { code: "empty" });
     } catch (error) {
       lastError = error;
-      if (error.code === "rate_limited") markExhausted(engine);
+      if (error.code === "rate_limited") handleRateLimit(engine, error);
       if (error.code === "locked") throw error;
     }
   }
-  throw lastError || Object.assign(new Error("사용할 수 있는 AI가 없어요"), { code: "no_engine" });
+  throw lastError || Object.assign(new Error(aiUnavailableReason()), { code: "no_engine" });
 }
 
 const ASSISTANT_RULES = "너는 프롬프트 작성을 돕는 일반 AI 어시스턴트다. 캐릭터나 말투 연기 없이, 정중하고 담백한 한국어로 답한다.";

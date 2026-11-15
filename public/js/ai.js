@@ -79,8 +79,52 @@ const fallbackChain = modelKey => [...new Set([modelKey, ...FALLBACK_ORDER, ...O
 // 서버(Vercel 함수)에 키가 설정돼 있고 오늘 한도가 남았으면 부를 수 있다.
 let serverProviders = new Set();
 
+// 분당 한도에 걸린 엔진은 잠깐(공급자가 알려 준 시간, 없으면 30초) 쉬게 한다. 하루 한도와 달리 저장하지 않음.
+const engineCooldownUntil = {};
+const ENGINE_COOLDOWN_DEFAULT_MS = 30000;
+const ENGINE_COOLDOWN_MAX_MS = 65000;
+
 function isProviderAvailable(modelKey) {
-  return serverProviders.has(modelKey) && quotaLeft(modelKey) > 0;
+  return serverProviders.has(modelKey) && quotaLeft(modelKey) > 0 && (engineCooldownUntil[modelKey] || 0) <= Date.now();
+}
+
+const ENGINE_NAMES = { gemini: "Gemini", gpt: "GPT" };
+
+// 하루 한도가 풀리는 시각을 이 기기 시간으로("오후 5:00에 풀림"). 리셋 기준 시간대의 자정까지 남은 시간으로 계산.
+function quotaResetText(engine) {
+  const zone = quotaInfo(engine).resetZone;
+  if (!zone) return "";
+  try {
+    const parts = Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone: zone, hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" }).formatToParts(new Date()).map(part => [part.type, part.value]));
+    const elapsedMs = ((Number(parts.hour) % 24) * 3600 + Number(parts.minute) * 60 + Number(parts.second)) * 1000;
+    const resetAt = new Date(Date.now() + 86400000 - elapsedMs);
+    return `${resetAt.toLocaleTimeString("ko-KR", { hour: "numeric", minute: "2-digit" })}에 풀림`;
+  } catch (error) { return ""; }
+}
+
+// AI를 못 쓰는 이유를 사람이 읽을 문장으로(시뮬레이션·브리프 실패 안내용).
+function aiUnavailableReason() {
+  if (!/^https?:$/.test(location.protocol)) return "서버 없이 열린 화면이에요";
+  if (serverLocked || !storedAccessCode()) return "접속 코드가 필요해요(🔒 눌러서 입력)";
+  if (!serverProviders.size) return "서버에 연결된 AI가 없어요";
+  const exhausted = [...serverProviders].filter(engine => quotaLeft(engine) <= 0);
+  if (exhausted.length === serverProviders.size) return `오늘 무료 한도를 다 썼어요(${exhausted.map(engine => `${ENGINE_NAMES[engine] || engine} ${quotaResetText(engine)}`).join(", ")})`;
+  return "AI 응답을 받지 못했어요";
+}
+
+// 한도 오류 처리: 하루 한도면 오늘 사용량을 다 쓴 것으로, 분당 한도면 잠깐 쉬게.
+function handleRateLimit(engine, error) {
+  if (error.scope === "day") { markExhausted(engine); return; }
+  const retryAfterMs = Number(error.retryAfter) > 0 ? Number(error.retryAfter) * 1000 + 1500 : ENGINE_COOLDOWN_DEFAULT_MS;
+  const waitMs = Math.min(ENGINE_COOLDOWN_MAX_MS, retryAfterMs);
+  engineCooldownUntil[engine] = Date.now() + Math.max(waitMs, 5000);
+}
+
+// 쉬는 중인 엔진만 남았으면, 가장 먼저 풀리는 시각까지 남은 ms. 쓸 수 있는 엔진이 있거나 다 하루 한도면 0.
+function cooldownWaitMs(modelKey) {
+  const chain = fallbackChain(modelKey).filter(engine => serverProviders.has(engine) && quotaLeft(engine) > 0);
+  if (!chain.length || chain.some(engine => (engineCooldownUntil[engine] || 0) <= Date.now())) return 0;
+  return Math.max(0, Math.min(...chain.map(engine => engineCooldownUntil[engine])) - Date.now());
 }
 
 // 한 엔진 호출: 같은 출처의 /api/chat(Vercel 함수)로 보낸다. API 키는 서버에만 있다.
@@ -90,6 +134,8 @@ async function callEngine(engine, prompt, onText, maxTokens = DEFAULT_MAX_TOKENS
   if (!response.ok) {
     const error = new Error(data.message || `HTTP ${response.status}`);
     error.code = data.code || (response.status === 429 ? "rate_limited" : response.status === 401 ? "locked" : "upstream_error");
+    error.scope = data.scope;
+    error.retryAfter = data.retryAfter;
     throw error;
   }
   onText({ text: data.text || "" });

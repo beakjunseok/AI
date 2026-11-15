@@ -68,6 +68,8 @@ function normalizeState(parsed) {
       parsed.agents.forEach(agent => { agent.model = defaultModelOf(agent.id); });
       parsed.modelPlan = MODEL_PLAN_VERSION;
     }
+    // 분당 한도를 '오늘 한도 소진'으로 잘못 기록하던 버그 때문에 막힌 사용량을 한 번만 초기화한다.
+    if (!parsed.usageFixedV2) { delete parsed.usage; parsed.usageFixedV2 = true; }
     return parsed;
   } catch (error) { return null; }
 }

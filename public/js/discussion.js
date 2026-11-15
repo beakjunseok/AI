@@ -324,6 +324,12 @@ async function writeBrief(topicText = "") {
     if (code.ok) brief.text = `${brief.text.trim()}\n\n## 초기 코드\n${code.text.trim()}`;
   }
   discussion.status = "done";
+  // 서버로 열었는데 AI를 못 불러 예시(시뮬레이션) 문서가 나왔으면 브리프로 저장하지 않는다.
+  if (brief.ok && brief.engine === "simulation" && /^https?:$/.test(location.protocol)) {
+    postSystemNote(`⚠️ 브리프를 못 썼어요: ${aiUnavailableReason()}. 예시 문서는 저장하지 않았어요. 잠시 뒤 다시 눌러 주세요.`);
+    playSound("error");
+    return;
+  }
   if (brief.ok) {
     state.briefs.unshift({ id: briefId, topic: discussion.topic, text: brief.text, time: Date.now(), project: findProject(state.activeProjectId)?.name || "" });
     state.briefs = state.briefs.slice(0, BRIEF_KEEP);
