@@ -144,7 +144,9 @@ function renderChatView(agentId) {
     const brainstormButton = el("button", { class: "btn", type: "button", text: "💡 브레인스토밍", title: "AI들이 각자 아이디어를 마구 던지고, 칸반이 추려 줘요. 입력칸이 비어 있으면 지금까지 대화로 해요",
       onclick: () => { const seed = textarea.value.trim(); textarea.value = ""; threadPinnedToBottom = true; startBrainstorm(seed); } });
     if (busy || isDiscussionActive()) brainstormButton.disabled = true;
-    buttonRows.push(el("div", { class: "chatButtons secondary" }, brainstormButton, topicButton));
+    const promptButton = el("button", { class: "btn", type: "button", text: "✨ 프롬프트", title: "프롬프트 도우미: 입력칸에 적은 글을 초안으로 점검·다듬어요. 비어 있으면 쓰던 작업을 이어서 열어요",
+      onclick: () => openPromptHelper(textarea.value) });
+    buttonRows.push(el("div", { class: "chatButtons secondary" }, brainstormButton, topicButton, promptButton));
   }
   const form = el("form", { class: "chatForm" }, promptLine, textarea, buttonRows,
     isRoom ? null : el("p", { class: "modelNote", text: modelNoteText(getAgent(agentId).model) }));

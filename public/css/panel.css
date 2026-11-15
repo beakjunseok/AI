@@ -118,3 +118,7 @@ body.panelOpen #panel{transform:none}
 .promptRefine{display:flex;gap:6px}
 .promptRefine .promptCustom{flex:1}
 @media (max-width:560px){ .promptHelperBtn{font-size:12px;padding:6px 9px} .promptHelperBtn .wideOnly{display:none} }
+
+/* 기획방 보조 버튼 3개(브레인스토밍·구체화·프롬프트)가 폰에서도 한 줄에 들어가게 */
+.chatButtons.secondary .btn{white-space:nowrap;padding:7px 4px;min-width:0}
+@media (max-width:560px){ .chatButtons.secondary .btn{font-size:11.5px;letter-spacing:-.02em} }

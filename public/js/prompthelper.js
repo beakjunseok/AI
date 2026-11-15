@@ -243,7 +243,10 @@ function renderPromptHelper() {
   return card;
 }
 
-function openPromptHelper() {
+// draftText를 주면(기획방 입력칸 내용 등) 그걸 새 초안으로 시작하고, 없으면 쓰던 작업을 그대로 연다.
+function openPromptHelper(draftText) {
+  const draft = typeof draftText === "string" ? draftText.trim() : "";
+  if (draft) Object.assign(promptHelperState(), { draft, analysis: null, answers: {}, result: null });
   renderPromptHelper();
   document.getElementById("zoom").classList.add("show");
   playSound("panelOpen");
