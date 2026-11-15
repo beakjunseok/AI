@@ -8,22 +8,24 @@ const PLAN_NOTES_MAX_CHUNKS = 6;
 const PLAN_NOTES_ARCHIVE_CHARS = 60000;
 const PLAN_NOTES_LINE_LIMIT = 1500;
 const PLAN_NOTES_TOKENS = 1800;
-const PLAN_NOTES_SKIP_KINDS = new Set(["brief", "briefPart", "briefCode", "review"]);
+const PREVIOUS_BRIEF_KINDS = new Set(["brief", "briefPart", "briefCode"]);
 
 function planNotesOf(projectId = state.activeProjectId) {
   state.planNotesByProject ||= {};
   return (state.planNotesByProject[projectId] ||= { text: "", coveredUntil: 0, archive: "" });
 }
 
-// 노트에 넣을 만한 대화인지: 시스템 메시지·브리프 결과물·교차 검증·작성 중인 메시지는 뺀다.
-const isPlanSourceMessage = message => !message.pending && message.from !== "system" && !PLAN_NOTES_SKIP_KINDS.has(message.kind) && typeof message.text === "string" && message.text.trim();
+// 노트에 넣을 만한 대화인지: 시스템 메시지·교차 검증·작성 중인 메시지는 늘 빼고,
+// 기획방의 '이전 브리프 빼기'가 켜져 있으면 예전 브리프·메모·초기 코드도 뺀다(기본은 포함).
+const isPlanSourceMessage = message => !message.pending && message.from !== "system" && message.kind !== "review"
+  && !(state.briefExcludePrevious && PREVIOUS_BRIEF_KINDS.has(message.kind)) && typeof message.text === "string" && message.text.trim();
 
 function planSourceLine(message) {
   const channelName = channelOf(message) === ROOM_CHANNEL ? "기획방" : `1:1 ${getPreset(channelOf(message))?.name || ""}`;
   return `[${channelName}] ${formatHistoryLine(message, PLAN_NOTES_LINE_LIMIT)}`;
 }
 
-// 노트가 없을 때 쓰는 대체 자료: 남아 있는 대화 중 기획 관련 원문(브리프 결과물 제외). 예산을 넘으면 최근 쪽을 남긴다.
+// 노트가 없을 때 쓰는 대체 자료: 남아 있는 대화 원문(이전 브리프 포함). 예산을 넘으면 최근 쪽을 남긴다.
 function buildPlanSourceText(characterBudget) {
   const notes = planNotesOf();
   const lines = [...(notes.archive ? notes.archive.split("\n") : []), ...state.chat.filter(isPlanSourceMessage).map(planSourceLine)];

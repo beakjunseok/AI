@@ -200,7 +200,7 @@ function buildBriefPartPrompt(agentId, topic, planNotes) {
     "[기획 노트 — 이 프로젝트의 전체 대화에서 시스템 기획 내용만 정리한 것]",
     planNotes || "(없음)",
     "",
-    "[최근 대화 (브리프 결과물 제외)]",
+    "[최근 대화]",
     buildPlanSourceText(2500),
     "",
     "기획 노트를 기준으로 쓰고, 잡담·농담·캐릭터 대사는 무시한다.",
@@ -335,13 +335,22 @@ async function writeBrief(topicText = "") {
   postSystemNote(brief.ok ? "📄 브리프 완성! 복사해서 Claude에게 붙여넣으세요." : "브리프 작성에 실패했어요. 다시 시도해 주세요.");
 }
 
+// 브리프 재료에서 이전 브리프 결과물을 뺄지 고르는 체크박스(기본: 포함).
+function excludePreviousBriefToggle() {
+  const checkbox = el("input", { type: "checkbox" });
+  checkbox.checked = Boolean(state.briefExcludePrevious);
+  checkbox.addEventListener("change", () => { state.briefExcludePrevious = checkbox.checked; saveState(); });
+  return el("label", { class: "briefToggle", title: "체크하면 예전에 쓴 브리프·팀원 메모·초기 코드는 빼고, 사람과 팀원의 대화만으로 브리프를 써요. 이미 기획 노트에 정리된 내용은 그대로 남아요." },
+    checkbox, el("span", { text: "이전 브리프 빼기" }));
+}
+
 // topicInput: 기획방 입력칸. 토론이 없을 때도 'Claude용 브리프 쓰기'는 항상 보인다.
 function renderDiscussionBar(topicInput) {
   const discussion = state.discussion;
   if (!discussion) {
     const busy = aiBusyAgents.size > 0 || brainstormActive;
     return el("div", { class: "discussBar" },
-      el("b", { text: "📄 기획방 대화로 바로 브리프" }),
+      el("b", { text: "📄 기획방 대화로 바로 브리프" }), excludePreviousBriefToggle(),
       el("button", { class: "btn pink", type: "button", disabled: busy, text: "📝 Claude용 브리프 쓰기", title: "입력칸에 주제를 적으면 그 주제로, 비어 있으면 지금까지 기획방 대화로 Claude에게 넘길 브리프를 써요",
         onclick: () => { const topic = topicInput?.value || ""; if (topicInput) topicInput.value = ""; writeBrief(topic); } }));
   }
@@ -350,6 +359,7 @@ function renderDiscussionBar(topicInput) {
   if (discussion.status === "writing") return el("div", { class: "discussBar" }, label, el("span", { text: "📝 브리프 작성 중…" }));
   const busy = aiBusyAgents.size > 0 || brainstormActive;
   return el("div", { class: "discussBar" }, label,
+    excludePreviousBriefToggle(),
     el("button", { class: "btn", type: "button", disabled: busy, text: "🔁 한 라운드 더", onclick: () => runDiscussionRounds(1) }),
     el("button", { class: "btn pink", type: "button", disabled: busy, text: discussion.status === "done" ? "📝 브리프 다시 쓰기" : "📝 Claude용 브리프 쓰기", onclick: () => writeBrief() }));
 }
