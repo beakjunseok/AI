@@ -23,6 +23,20 @@ function planSourceLine(message) {
   return `[${channelName}] ${formatHistoryLine(message, PLAN_NOTES_LINE_LIMIT)}`;
 }
 
+// 노트가 없을 때 쓰는 대체 자료: 남아 있는 대화 중 기획 관련 원문(브리프 결과물 제외). 예산을 넘으면 최근 쪽을 남긴다.
+function buildPlanSourceText(characterBudget) {
+  const notes = planNotesOf();
+  const lines = [...(notes.archive ? notes.archive.split("\n") : []), ...state.chat.filter(isPlanSourceMessage).map(planSourceLine)];
+  const kept = [];
+  let used = 0;
+  for (let index = lines.length - 1; index >= 0; index--) {
+    if (used + lines[index].length > characterBudget && kept.length) break;
+    kept.unshift(lines[index]);
+    used += lines[index].length + 1;
+  }
+  return kept.join("\n");
+}
+
 // 보관 한도(CHAT_LIMIT)로 잘려 나가는 대화 중 아직 노트에 반영 안 된 것을 따로 모아 둔다.
 function archiveForPlanNotes(removedMessages) {
   const notes = planNotesOf();
@@ -80,7 +94,7 @@ async function refreshPlanNotes() {
       if (updated) text = updated;
     }
   } catch (error) {
-    showToast("기획 노트 정리에 실패해서 최근 대화로 브리프를 써요");
+    postSystemNote(`⚠️ 기획 노트 정리 실패(${error.message || "알 수 없는 오류"}) → 노트 없이 남아 있는 전체 대화로 브리프를 써요`);
     return notes.text;
   }
   notes.text = text;

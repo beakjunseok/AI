@@ -36,7 +36,7 @@ function promptHelperEngine() {
   return FALLBACK_ORDER.map(pickEngine).find(Boolean) || null;
 }
 
-// 엔진이 한도에 걸리면 다음 엔진으로 넘겨 한 번 더 시도한다.
+// 한 엔진이 실패하거나(한도·서버 오류·시간 초과) 빈 답을 주면 다음 엔진으로 넘겨 다시 시도한다.
 async function askPromptAi(prompt, maxTokens) {
   const tried = new Set();
   let lastError = null;
@@ -47,11 +47,12 @@ async function askPromptAi(prompt, maxTokens) {
     try {
       recordUsage(engine);
       const result = await callEngine(engine, prompt, () => {}, maxTokens);
-      return result.text;
+      if (result.text && result.text.trim()) return result.text;
+      lastError = Object.assign(new Error(`${engineLabel(engine)}가 빈 답을 줬어요`), { code: "empty" });
     } catch (error) {
       lastError = error;
-      if (error.code === "rate_limited") { markExhausted(engine); continue; }
-      throw error;
+      if (error.code === "rate_limited") markExhausted(engine);
+      if (error.code === "locked") throw error;
     }
   }
   throw lastError || Object.assign(new Error("사용할 수 있는 AI가 없어요"), { code: "no_engine" });
