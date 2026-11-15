@@ -269,9 +269,16 @@ function simulateBrief(topic, authors) {
 }
 
 // 1) 참가자별 파트 메모 → 2) 기획 담당(없으면 첫 참가자)이 하나로 합친다. 호출 수 = 참가자 수 + 1.
-async function writeBrief() {
+// 토론 없이 누르면: 입력칸 글(없으면 기획방 대화 전체)을 주제로 바로 브리프를 쓴다.
+async function writeBrief(topicText = "") {
+  if (isDiscussionActive()) return;
+  if (!state.discussion) {
+    const hasConversation = state.chat.some(message => channelOf(message) === ROOM_CHANNEL && message.from !== "system");
+    const topic = String(topicText || "").trim() || (hasConversation ? "지금까지 기획방에서 나눈 대화 내용" : "");
+    if (!topic) { showToast("입력칸에 주제를 적거나, 기획방에서 먼저 이야기를 나눠 주세요"); return; }
+    state.discussion = { id: nextId("d"), topic, round: 0, status: "idle", members: pickDiscussionMembers() };
+  }
   const discussion = state.discussion;
-  if (!discussion || isDiscussionActive()) return;
   discussion.status = "writing";
   postSystemNote("📝 Claude에게 넘길 브리프를 함께 쓰는 중…");
   const parts = [];
@@ -318,16 +325,23 @@ async function writeBrief() {
   postSystemNote(brief.ok ? "📄 브리프 완성! 복사해서 Claude에게 붙여넣으세요." : "브리프 작성에 실패했어요. 다시 시도해 주세요.");
 }
 
-function renderDiscussionBar() {
+// topicInput: 기획방 입력칸. 토론이 없을 때도 'Claude용 브리프 쓰기'는 항상 보인다.
+function renderDiscussionBar(topicInput) {
   const discussion = state.discussion;
-  if (!discussion) return null;
+  if (!discussion) {
+    const busy = aiBusyAgents.size > 0 || brainstormActive;
+    return el("div", { class: "discussBar" },
+      el("b", { text: "📄 기획방 대화로 바로 브리프" }),
+      el("button", { class: "btn pink", type: "button", disabled: busy, text: "📝 Claude용 브리프 쓰기", title: "입력칸에 주제를 적으면 그 주제로, 비어 있으면 지금까지 기획방 대화로 Claude에게 넘길 브리프를 써요",
+        onclick: () => { const topic = topicInput?.value || ""; if (topicInput) topicInput.value = ""; writeBrief(topic); } }));
+  }
   const label = el("b", { text: `🧠 ${discussion.topic.slice(0, 40)}${discussion.topic.length > 40 ? "…" : ""} · R${discussion.round}` });
   if (discussion.status === "running") return el("div", { class: "discussBar" }, label, el("button", { class: "btn soft", type: "button", text: "⏹ 멈추기", onclick: stopDiscussion }));
   if (discussion.status === "writing") return el("div", { class: "discussBar" }, label, el("span", { text: "📝 브리프 작성 중…" }));
   const busy = aiBusyAgents.size > 0 || brainstormActive;
   return el("div", { class: "discussBar" }, label,
     el("button", { class: "btn", type: "button", disabled: busy, text: "🔁 한 라운드 더", onclick: () => runDiscussionRounds(1) }),
-    el("button", { class: "btn pink", type: "button", disabled: busy, text: discussion.status === "done" ? "📝 브리프 다시 쓰기" : "📝 Claude용 브리프 쓰기", onclick: writeBrief }));
+    el("button", { class: "btn pink", type: "button", disabled: busy, text: discussion.status === "done" ? "📝 브리프 다시 쓰기" : "📝 Claude용 브리프 쓰기", onclick: () => writeBrief() }));
 }
 
 function downloadText(fileName, text) {

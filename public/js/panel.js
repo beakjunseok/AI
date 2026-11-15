@@ -184,7 +184,7 @@ function renderChatView(agentId) {
     if (threadPinnedToBottom) { unseenMessageCount = 0; document.querySelector(".jumpLatest")?.remove(); }
     else showJumpButton();
   }, { passive: true });
-  const view = el("div", { id: "chatView" }, filter, thread, isRoom ? renderDiscussionBar() : null, form);
+  const view = el("div", { id: "chatView" }, filter, thread, isRoom ? renderDiscussionBar(textarea) : null, form);
   view.style.display = isRoom || panelTab === "chat" ? "flex" : "none";
   return view;
 }
