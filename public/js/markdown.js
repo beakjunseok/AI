@@ -79,22 +79,24 @@ async function copyText(text) {
 }
 
 // 최근 대화를 뒤에서부터 글자 예산(약 7천 자) 안에서 모은다. 긴 줄은 900자로 자른다. O(메시지 수)
+// 대화 한 건을 AI에게 보여줄 한 줄로. lineLimit보다 긴 본문은 자른다.
+function formatHistoryLine(message, lineLimit = HISTORY_LINE_LIMIT) {
+  const body = message.text.length > lineLimit ? `${message.text.slice(0, lineLimit)}…` : message.text;
+  if (message.from === "user") {
+    const target = message.to === "team" ? "팀 전체" : message.to === "topic" ? "토론 주제" : message.to === "brainstorm" ? "브레인스토밍 주제" : getPreset(message.to)?.name || "";
+    return `팀장 → ${target}: ${body}`;
+  }
+  const author = getPreset(message.from);
+  const tag = { review: " [교차 검증]", discuss: ` [토론 R${message.round || 1}]`, briefPart: " [브리프 메모]", brief: " [최종 브리프]", brainstorm: " [브레인스토밍]", ideaList: " [아이디어 정리]" }[message.kind] || "";
+  return `${author.name}(${ROLE_LABELS[author.roleKey]})${tag}: ${body}`;
+}
+
 function buildHistory(characterBudget = HISTORY_CHAR_BUDGET, channel = ROOM_CHANNEL) {
   const lines = [];
   let used = 0;
   const finished = state.chat.filter(message => !message.pending && message.from !== "system" && channelOf(message) === channel);
   for (let index = finished.length - 1; index >= 0; index--) {
-    const message = finished[index];
-    const body = message.text.length > HISTORY_LINE_LIMIT ? `${message.text.slice(0, HISTORY_LINE_LIMIT)}…` : message.text;
-    let line;
-    if (message.from === "user") {
-      const target = message.to === "team" ? "팀 전체" : message.to === "topic" ? "토론 주제" : message.to === "brainstorm" ? "브레인스토밍 주제" : getPreset(message.to)?.name || "";
-      line = `팀장 → ${target}: ${body}`;
-    } else {
-      const author = getPreset(message.from);
-      const tag = { review: " [교차 검증]", discuss: ` [토론 R${message.round || 1}]`, briefPart: " [브리프 메모]", brief: " [최종 브리프]", brainstorm: " [브레인스토밍]", ideaList: " [아이디어 정리]" }[message.kind] || "";
-      line = `${author.name}(${ROLE_LABELS[author.roleKey]})${tag}: ${body}`;
-    }
+    const line = formatHistoryLine(finished[index]);
     if (used + line.length > characterBudget && lines.length) break;
     lines.unshift(line);
     used += line.length;

@@ -33,7 +33,7 @@ function pushChat(message) {
   if (!threadPinnedToBottom) unseenMessageCount += 1;
   const full = Object.assign({ id: nextId("m"), time: Date.now() }, message);
   state.chat.push(full);
-  if (state.chat.length > CHAT_LIMIT) state.chat.splice(0, state.chat.length - CHAT_LIMIT);
+  if (state.chat.length > CHAT_LIMIT) archiveForPlanNotes(state.chat.splice(0, state.chat.length - CHAT_LIMIT));
   return full;
 }
 

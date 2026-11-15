@@ -191,21 +191,25 @@ function stopDiscussion() {
   showToast("지금 말하는 팀원까지만 하고 멈출게요");
 }
 
-function buildBriefPartPrompt(agentId, topic) {
+function buildBriefPartPrompt(agentId, topic, planNotes) {
   const preset = getPreset(agentId);
   return [
     `너는 '${preset.name}'(${ROLE_LABELS[preset.roleKey]} 관점). 성격: ${preset.persona}`,
     `팀이 토론한 주제: """${topic}"""`,
     "",
-    "지금까지 대화:",
-    buildHistory(6000),
+    "[기획 노트 — 이 프로젝트의 전체 대화에서 시스템 기획 내용만 정리한 것]",
+    planNotes || "(없음)",
     "",
+    "[최근 대화]",
+    buildHistory(2500),
+    "",
+    "기획 노트를 기준으로 쓰고, 잡담·농담·캐릭터 대사는 무시한다.",
     "이제 다른 AI(Claude)에게 넘길 기획 브리프를 팀이 함께 쓴다. 네 역할 관점의 파트 메모를 써라.",
     "형식: 불릿(-) 3~5개, 토론에서 합의된 내용 위주, 미해결 쟁점은 '(미정)'으로 표시. 캐릭터 말투 없이 담백하게. 한국어 400자 이내."
   ].join("\n");
 }
 
-function buildBriefComposePrompt(topic, parts) {
+function buildBriefComposePrompt(topic, parts, planNotes) {
   const kind = projectKindOf(findProject(state.activeProjectId));
   const partText = parts.map(part => `[${getPreset(part.from).name} · ${ROLE_LABELS[getPreset(part.from).roleKey]}]\n${part.text}`).join("\n\n");
   const authors = parts.map(part => getPreset(part.from).name).join("·");
@@ -218,8 +222,10 @@ function buildBriefComposePrompt(topic, parts) {
     "파트 메모:",
     partText,
     "",
-    "토론 요약용 대화:",
-    buildHistory(5000),
+    "[기획 노트 — 전체 대화에서 시스템 기획 내용만 정리한 것. 브리프의 1차 근거]",
+    planNotes || buildHistory(5000),
+    "",
+    "규칙: 시스템 기획(목표·사용자·기능·화면 흐름·데이터·기술·제약·결정·미해결 쟁점)에 해당하는 내용만 쓴다. 잡담·농담·캐릭터 말투·기획과 무관한 이야기는 넣지 않는다. 대화 앞부분에서 정한 것도 빠뜨리지 말고, 나중에 바뀐 결정은 최신 것만 쓴다.",
     "",
     "출력은 아래 마크다운 형식 그대로(제목 문구 유지), 한국어, 군더더기 없이:",
     `# 기획 브리프: (주제를 짧게)`,
@@ -280,11 +286,14 @@ async function writeBrief(topicText = "") {
   }
   const discussion = state.discussion;
   discussion.status = "writing";
+  if (panelAgentId) renderPanel();
+  postSystemNote("🗂 전체 대화에서 시스템 기획 내용만 정리하는 중…");
+  const planNotes = await refreshPlanNotes();
   postSystemNote("📝 Claude에게 넘길 브리프를 함께 쓰는 중…");
   const parts = [];
   for (const agentId of discussion.members) {
     const part = await streamAgentMessage(agentId, {
-      prompt: buildBriefPartPrompt(agentId, discussion.topic),
+      prompt: buildBriefPartPrompt(agentId, discussion.topic, planNotes),
       simulate: () => `- ${simulateDiscussionLine(agentId, 2)}\n- (미정) 세부 사항`,
       extra: { kind: "briefPart" },
       maxTokens: 500
@@ -295,7 +304,7 @@ async function writeBrief(topicText = "") {
   const authors = discussion.members.map(id => getPreset(id).name).join("·");
   const briefId = nextId("b");
   const brief = await streamAgentMessage(editorId, {
-    prompt: buildBriefComposePrompt(discussion.topic, parts),
+    prompt: buildBriefComposePrompt(discussion.topic, parts, planNotes),
     simulate: () => simulateBrief(discussion.topic, authors),
     extra: { kind: "brief", briefId },
     maxTokens: 2000
