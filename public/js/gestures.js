@@ -157,7 +157,6 @@ function corridorFraction(clientX) {
 
 function handleDrop(agentId, target, clientX, clientY) {
   if (!target) return;
-  noteManualMove(agentId);
   if (target.id === "lounge") moveAgent(agentId, "lounge", null);
   else if (target.id === "corridor") moveToCorridor(agentId, corridorFraction(clientX));
   else if (target.dataset.pod != null) moveToPod(agentId);

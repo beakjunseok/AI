@@ -8,6 +8,14 @@ function switchProject(projectId) {
     state.chatByProject[state.activeProjectId] = state.chat;
     state.discussionByProject[state.activeProjectId] = state.discussion;
   }
+  const previousId = state.activeProjectId;
+  state.agents.filter(agent => agent.location !== "lounge").forEach(agent => {
+    agent.taskByProject ||= {};
+    if (agent.currentTaskId) agent.taskByProject[previousId] = agent.currentTaskId;
+    agent.location = projectId;
+    const nextTask = findProject(projectId).tasks.find(task => task.id === agent.taskByProject[projectId] && !task.done);
+    agent.currentTaskId = nextTask ? nextTask.id : null;
+  });
   state.activeProjectId = projectId;
   state.chat = state.chatByProject[projectId] || [];
   state.discussion = state.discussionByProject[projectId] || null;

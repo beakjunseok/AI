@@ -8,15 +8,20 @@ function addLog(agent, { kind, text, project }) {
 
 // 역할 맞는 미배정 업무를 먼저 가져가고, 없으면 역할 템플릿으로 새 업무를 만든다.
 function claimTask(agent, project) {
+  return claimTaskFor(agent, project, taskId => { agent.currentTaskId = taskId; });
+}
+
+// 프로젝트에서 이 팀원 역할의 빈 업무를 맡거나, 없으면 새로 만든다. setTaskId로 '지금 업무' 또는 '그 프로젝트 업무'에 기록.
+function claimTaskFor(agent, project, setTaskId) {
   const preset = getPreset(agent.id);
   const available = project.tasks.find(task => !task.done && !task.assigneeId && (task.roleKey === preset.roleKey || task.roleKey === "any"));
-  if (available) { available.assigneeId = agent.id; agent.currentTaskId = available.id; return available; }
+  if (available) { available.assigneeId = agent.id; setTaskId(available.id); return available; }
   const recentOtherWork = project.tasks.filter(task => task.done && task.assigneeId !== agent.id).slice(-1)[0];
   const template = pickRandom(ROLE_TASK_TEMPLATES[preset.roleKey].filter(item => !item.includes("{target}") || recentOtherWork));
   const title = template.replace("{n}", String(Math.floor(Math.random() * 90) + 10)).replace("{target}", recentOtherWork ? recentOtherWork.title : "");
   const task = { id: nextId("t"), title, roleKey: preset.roleKey, assigneeId: agent.id, progress: 0, done: false, createdBy: "auto" };
   project.tasks.push(task);
-  agent.currentTaskId = task.id;
+  setTaskId(task.id);
   return task;
 }
 
@@ -61,7 +66,7 @@ function scheduleReview(author, project, task) {
 // 같은 공간의 두 팀원이 가끔 짧게 수다를 떤다.
 function maybePairChat() {
   if (Math.random() > 0.05) return;
-  const groups = [...state.projects.map(project => agentsInProject(project.id)), state.agents.filter(agent => agent.location === "lounge")]
+  const groups = [agentsInProject(state.activeProjectId), state.agents.filter(agent => agent.location === "lounge")]
     .map(group => group.filter(agent => !agent.sleeping && !aiBusyAgents.has(agent.id))).filter(group => group.length >= 2);
   if (!groups.length) return;
   const group = pickRandom(groups);
@@ -111,11 +116,32 @@ function tickOffice() {
     const isQuiet = !bubbles[agent.id] || bubbles[agent.id].until < now - 2500;
     if (isQuiet && Math.random() < 0.06) say(agent.id, pickRandom(agent.energy < 35 ? ["하암…", "졸려…", ...preset.lines.complain] : Math.random() < 0.25 ? preset.lines.complain : preset.lines.working));
   });
-  ensureEveryProjectStaffed();
+  workInOtherOffices();
   maybePairChat();
   autoFeedSleepers();
   updateDynamicViews();
   saveState();
+}
+
+// 지금 안 보는 사무실들: 책상에 앉아 깨어 있는 팀원이 그 프로젝트의 자기 업무도 같이 진행한다(화면 연출·소리 없이).
+// 에너지는 보는 사무실에서만 한 번 줄어든다. 완료하면 코인·기록·업무 수는 똑같이 쌓인다. O(프로젝트 수 × 팀원 수)
+function workInOtherOffices() {
+  const workers = state.agents.filter(agent => agent.location !== "lounge" && agent.slot != null && !agent.sleeping && !aiBusyAgents.has(agent.id) && !errandAgents.has(agent.id));
+  state.projects.filter(project => project.id !== state.activeProjectId).forEach(project => {
+    workers.forEach(agent => {
+      agent.taskByProject ||= {};
+      const preset = getPreset(agent.id);
+      let task = project.tasks.find(item => item.id === agent.taskByProject[project.id] && !item.done);
+      if (!task) task = claimTaskFor(agent, project, taskId => { agent.taskByProject[project.id] = taskId; });
+      task.progress = Math.min(100, task.progress + (4 + Math.random() * 8) * preset.speed * (1 + agent.affection / 200));
+      if (task.progress < 100) return;
+      task.done = true;
+      delete agent.taskByProject[project.id];
+      addLog(agent, { kind: "done", text: `[${task.title}] ${pickRandom(ROLE_OUTPUTS[preset.roleKey])}`, project: project.name });
+      state.coins += agent.affection >= 60 ? 7 : 5;
+      state.stats.tasksDone += 1;
+    });
+  });
 }
 
 function fallAsleep(agent) {

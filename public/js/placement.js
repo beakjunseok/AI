@@ -8,6 +8,16 @@ function releaseTask(agent) {
   agent.currentTaskId = null;
 }
 
+// 휴게실로 갈 때: 지금 업무뿐 아니라 다른 사무실에서 맡던 업무도 모두 내려놓는다.
+function releaseAllTasks(agent) {
+  releaseTask(agent);
+  Object.entries(agent.taskByProject || {}).forEach(([projectId, taskId]) => {
+    const task = findProject(projectId)?.tasks.find(item => item.id === taskId);
+    if (task && !task.done) task.assigneeId = null;
+  });
+  agent.taskByProject = {};
+}
+
 function firstEmptySlot(projectId) {
   const taken = new Set(agentsInProject(projectId).map(agent => agent.slot));
   for (let index = 0; index < SLOT_COUNT; index++) if (!taken.has(index)) return index;
@@ -19,9 +29,14 @@ function moveAgent(agentId, destination, requestedSlot) {
   const agent = getAgent(agentId);
   const preset = getPreset(agentId);
   const fromLocation = agent.location, fromSlot = agent.slot;
+  // 팀원은 모든 사무실에 함께 있으므로, 어느 프로젝트로 보내든 '지금 보는 사무실'로 출근시키는 것과 같다.
+  if (destination !== "lounge" && findProject(destination)) {
+    if (fromLocation !== "lounge" && requestedSlot == null) { showToast(`${preset.name}은(는) 이미 모든 사무실에 있어요`); return; }
+    destination = state.activeProjectId;
+  }
   if (destination === "lounge") {
     if (fromLocation === "lounge") return;
-    releaseTask(agent);
+    releaseAllTasks(agent);
     if (findProject(fromLocation)) agent.homeProject = fromLocation;
     agent.loungeSince = Date.now();
     agent.location = "lounge"; agent.slot = null;
@@ -119,7 +134,7 @@ const COMMUTE_MIN_REST_MS = 60000;
 function maybeCommute(agent) {
   if (agent.sleeping || agent.energy < COMMUTE_MIN_ENERGY || errandAgents.has(agent.id)) return false;
   if (Date.now() - (agent.loungeSince || 0) < COMMUTE_MIN_REST_MS) return false;
-  const project = findProject(agent.homeProject) || findProject(state.activeProjectId);
+  const project = findProject(state.activeProjectId);
   const slot = project ? firstEmptySlot(project.id) : null;
   if (slot == null) return false;
   moveAgent(agent.id, project.id, slot);
@@ -134,7 +149,7 @@ function closeProject(projectId) {
   const project = findProject(projectId);
   if (aiBusyAgents.size > 0 || isDiscussionActive()) { showToast("AI가 답하는 중에는 사무실을 닫을 수 없어요"); return; }
   if (!window.confirm(`'${project.name}' 사무실과 대화 내용을 모두 지울까요?`)) return;
-  agentsInProject(projectId).forEach(agent => { releaseTask(agent); agent.location = "lounge"; agent.slot = null; });
+  state.agents.forEach(agent => { if (agent.taskByProject) delete agent.taskByProject[projectId]; });
   const nextProject = state.projects.find(item => item.id !== projectId);
   if (projectId === state.activeProjectId) { state.chat = []; state.discussion = null; switchProject(nextProject.id); }
   delete state.chatByProject[projectId];

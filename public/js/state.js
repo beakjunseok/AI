@@ -24,6 +24,33 @@ function createInitialState() {
   return initial;
 }
 
+// 저장본 정리: 사무실 팀원은 모두 '지금 보는 프로젝트'에 서 있게 하고, 프로젝트별 업무 표(taskByProject)를 만든다.
+// 처음 한 번은 휴게실 팀원도 사무실로 불러 '모든 사무실에 5명'으로 시작한다. 책상 번호가 겹치면 빈 책상으로 옮긴다.
+function gatherTeamIntoEveryOffice(parsed) {
+  const projectIds = new Set(parsed.projects.map(project => project.id));
+  const activeId = projectIds.has(parsed.activeProjectId) ? parsed.activeProjectId : parsed.projects[0].id;
+  const firstTime = !parsed.allOfficesV1;
+  parsed.agents.forEach(agent => {
+    agent.taskByProject ||= {};
+    if (projectIds.has(agent.location) && agent.location !== activeId && agent.currentTaskId) agent.taskByProject[agent.location] = agent.currentTaskId;
+    if (agent.location === activeId && agent.currentTaskId) agent.taskByProject[activeId] = agent.currentTaskId;
+    if (firstTime && agent.location === "lounge") { agent.location = activeId; agent.slot = null; agent.spot = undefined; }
+    if (agent.location !== "lounge") { agent.location = activeId; agent.currentTaskId = agent.taskByProject[activeId] || null; }
+  });
+  const taken = new Set();
+  parsed.agents.filter(agent => agent.location !== "lounge").forEach(agent => {
+    const offDesk = agent.slot == null && agent.spot;
+    if (offDesk) return;
+    if (agent.slot == null || taken.has(agent.slot) || agent.slot >= SLOT_COUNT) {
+      let free = 0;
+      while (taken.has(free)) free += 1;
+      agent.slot = free < SLOT_COUNT ? free : null;
+    }
+    if (agent.slot != null) taken.add(agent.slot);
+  });
+  parsed.allOfficesV1 = true;
+}
+
 // 이 브라우저의 저장본을 읽는다. 손상되면 null → 새로 시작.
 function loadState() {
   try { return normalizeState(JSON.parse(localStorage.getItem(STORAGE_KEY) || "null")); } catch (error) { return null; }
@@ -68,6 +95,7 @@ function normalizeState(parsed) {
       parsed.agents.forEach(agent => { agent.model = defaultModelOf(agent.id); });
       parsed.modelPlan = MODEL_PLAN_VERSION;
     }
+    gatherTeamIntoEveryOffice(parsed);
     // 분당 한도를 '오늘 한도 소진'으로 잘못 기록하던 버그 때문에 막힌 사용량을 한 번만 초기화한다.
     if (!parsed.usageFixedV2) { delete parsed.usage; parsed.usageFixedV2 = true; }
     return parsed;
@@ -82,7 +110,9 @@ function saveState() {
 const getPreset = agentId => AGENT_PRESETS.find(preset => preset.id === agentId);
 const getAgent = agentId => state.agents.find(agent => agent.id === agentId);
 const findProject = projectId => state.projects.find(project => project.id === projectId) || null;
-const agentsInProject = projectId => state.agents.filter(agent => agent.location === projectId);
+// 팀원은 모든 사무실에 동시에 있다: 휴게실이 아니면 어느 프로젝트에서 보든 그 사무실 팀원이다.
+// (화면 처리를 위해 사무실 팀원의 location은 늘 '지금 보는 프로젝트'로 맞춰 둔다. 프로젝트별 업무는 taskByProject.)
+const agentsInProject = projectId => (findProject(projectId) ? state.agents.filter(agent => agent.location !== "lounge") : []);
 // 새 id. 프로젝트 id는 기본 프로젝트(p1, p2)와 절대 겹치지 않게 이미 있는 id를 건너뛴다.
 const nextId = prefix => {
   let id;

@@ -137,13 +137,13 @@ const pause = milliseconds => new Promise(resolve => setTimeout(resolve, millise
 
 // 걷는 스프라이트와 고양이는 나타난 사무실을 기억한다. 다른 프로젝트 탭을 보는 동안엔 숨기고(움직임은 계속), 돌아오면 다시 보인다.
 function createWalker(agent, bubble) {
-  const walker = el("div", { class: "walker", dataset: { project: agent.location } }, bubble, spriteImage(agent.id, "", "walk"));
-  walker.hidden = agent.location !== state.activeProjectId;
+  // 팀원은 모든 사무실에 같이 있으므로 걷는 모습도 어느 사무실에서나 보인다(고양이만 프로젝트별).
+  const walker = el("div", { class: "walker", dataset: { project: agent.location === "lounge" ? "lounge" : "all" } }, bubble, spriteImage(agent.id, "", "walk"));
   return walker;
 }
 
 function syncWalkerVisibility() {
-  document.querySelectorAll("#walkLayer .walker, #catLayer .cat").forEach(node => { node.hidden = node.dataset.project !== state.activeProjectId; });
+  document.querySelectorAll("#walkLayer .walker, #catLayer .cat").forEach(node => { node.hidden = node.dataset.project !== "all" && node.dataset.project !== "lounge" && node.dataset.project !== state.activeProjectId; });
 }
 
 async function runErrand(agent, plan) {

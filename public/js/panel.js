@@ -287,8 +287,8 @@ function renderInfoView(agentId) {
   const agent = getAgent(agentId);
   const preset = getPreset(agentId);
   const locationChips = [
-    el("button", { class: "chip" + (agent.location === "lounge" ? " on" : ""), text: "🛋️ 대기실", onclick: () => { noteManualMove(agentId); moveAgent(agentId, "lounge", null); } }),
-    ...state.projects.map(project => el("button", { class: "chip" + (agent.location === project.id ? " on" : ""), text: project.name, onclick: () => { noteManualMove(agentId); moveAgent(agentId, project.id, null); } }))
+    el("button", { class: "chip" + (agent.location === "lounge" ? " on" : ""), text: "🛋️ 대기실", onclick: () => moveAgent(agentId, "lounge", null) }),
+    el("button", { class: "chip" + (agent.location !== "lounge" ? " on" : ""), text: "🏢 모든 사무실", title: "사무실에 있으면 모든 프로젝트에서 동시에 일해요", onclick: () => moveAgent(agentId, state.activeProjectId, null) })
   ];
   const careButtons = [
     el("button", { class: "btn pink", text: "👍 칭찬하기", onclick: () => petAgent(agentId) }),
