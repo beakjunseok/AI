@@ -111,6 +111,7 @@ function tickOffice() {
     const isQuiet = !bubbles[agent.id] || bubbles[agent.id].until < now - 2500;
     if (isQuiet && Math.random() < 0.06) say(agent.id, pickRandom(agent.energy < 35 ? ["하암…", "졸려…", ...preset.lines.complain] : Math.random() < 0.25 ? preset.lines.complain : preset.lines.working));
   });
+  ensureEveryProjectStaffed();
   maybePairChat();
   autoFeedSleepers();
   updateDynamicViews();
